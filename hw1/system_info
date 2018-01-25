@@ -1,0 +1,68 @@
+#!/bin/bash
+
+#Bash script to collect important info of Operating System 
+
+hello(){
+
+echo "-----------------------------------------------------"
+echo " __User Information__"
+echo 
+echo " USER   : $USER"
+echo " USERID : `id -u`"
+echo " DATE   : `date`"
+echo
+}
+
+os_info(){
+echo "-----------------------------------------------------"
+echo " __Operating System Information__"
+echo
+echo " OS Type/Brand      : `uname -o`"
+echo " OS Distro          : `lsb_release -is`"
+echo " OS Distro version  : `lsb_release -ds`"
+echo " OS Distro Codename : `lsb_release -cs`"
+echo
+}
+
+kernel_info(){
+echo "-----------------------------------------------------"
+echo " __Kernel Information__"
+echo
+echo " Kernel                   : `uname -s`"
+echo " Kernel version           : `uname -r`"
+echo " Kernel build information :"
+echo " `cat /proc/version`"
+echo
+}
+
+sysarch_info(){
+echo "-----------------------------------------------------"
+echo " __System Architecture information__"
+echo
+echo "`lscpu`"
+echo
+}
+
+filesys_info(){
+echo "-----------------------------------------------------"
+echo " __Information on File System Memory__"
+echo
+echo "`df -h`"
+echo
+echo "-----------------------------------------------------"
+}
+
+
+run_all(){
+hello
+os_info
+kernel_info
+sysarch_info
+filesys_info
+}
+
+
+
+my_file=SYS_INFO
+
+run_all | tee $my_file.txt
