@@ -1,3 +1,30 @@
 #!/bin/bash
 
 #bash script to compile and build the kernel!
+
+#Declare the number of CPU cores alloted to the system 
+declare -r cores=4
+x=$((2*$cores))
+
+build(){
+echo
+echo "====> Building kernel..."
+echo "make -j$x"
+make -j$x
+
+echo
+echo "====> Installing kernel-modules..."
+echo "sudo make modules_install"
+sudo make modules_install
+
+echo
+echo "====> Installing kernel.."
+echo "sudo make install"
+sudo make install 
+
+echo
+echo "Reboot the system and boot the kernel"
+echo
+}
+
+build | tee ~/repos/ecen5013/bin/kernel-build.log
