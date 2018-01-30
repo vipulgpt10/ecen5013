@@ -95,6 +95,7 @@ int main()
 	printf("Reading from file...");
 	read_file();
 	free(str);
+	printf("\n");
 
 	return 0;
 }
