@@ -18,24 +18,21 @@
 int main()
 {
     uint16_t i;
-//    uint8_t * buff = (uint8_t *)malloc(256 * sizeof(uint8_t));
+    uint8_t * buff = (uint8_t *)malloc(256 * sizeof(uint8_t));
     uint8_t * sort_buff = (uint8_t *)malloc(256 * sizeof(uint8_t));
  
-	uint8_t * buff = NULL; 
 
     printf("Randomly generated string to sort:\n\n");
 
     srand(time(0));
 
-    // for(i = 0; i < 256; i++)
-    // {
-    //     *(buff + i) = (rand() % 96) + 32;
-    //     printf("%c", *(buff + i));
+    for(i = 0; i < 256; i++)
+    {
+        *(buff + i) = (rand() % 96) + 32;
+        printf("%c", *(buff + i));
 
-    // }
-    // printf("\n\nMaking system call \n\n");
-
-    scanf("%[^\n]s", buff);
+    }
+    printf("\n\nMaking system call \n\n");
 
     /* System call handler */
     long res = syscall(SYS_MYSORT, buff, strlen(buff), sort_buff); 

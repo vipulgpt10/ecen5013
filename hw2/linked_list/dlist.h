@@ -32,7 +32,8 @@ struct dlNode
  * Given the reference pointer to the head of the list, it will insert 
  * a new node at the beginnning of the list and returns the head node pointer.
  *
- * @param head_ref Reference pointer to the head 
+ * @param head_ref Reference pointer to the head
+ * @param ndata Data 
  *
  * @return Pointer to the head node
  */
@@ -46,6 +47,7 @@ struct dlNode * insert_at_beginning(struct dlNode ** head_ref,
  * insert a new node at the end of the list and returns the head node pointer.
  *
  * @param head_ref Reference pointer to the head 
+ * @param ndata Data
  *
  * @return Pointer to the head node
  */
@@ -58,6 +60,7 @@ struct dlNode * insert_at_end(struct dlNode ** head_ref, uint32_t ndata);
  * at the given index of the list and returns the head node pointer.
  *
  * @param head Head node pointer
+ * @param ndata Data
  *
  * @return Pointer to the head of the list
  */
