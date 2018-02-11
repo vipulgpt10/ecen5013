@@ -1,10 +1,10 @@
-Process id: 19233
+Process id: 8665
 User id :   1000
-Sun Feb  4 21:36:07 2018
+Sun Feb 11 02:52:01 2018
 
 Randomly generated string to sort:
 
-z%/xVb|f$_abw?1V1wy*:k]TCpb?vE7P*FH@h$&mDG/;G@qX8KC26 fZQ(YG-pw7wX_d>,(f<C-\tET?hf6i-P:5)ACzxZQWr0;1=Cw9fdU;)*ZrpP;} 5s*VvdN05%#%A4"Dk;+OQ&8[`*+1E)qZ\[pR~btdEz%9\)$Xt3)zLd[6oL<X=V4YGFXEiM).GnHcx,;l@DGL("bX.~p+Ued\+}!TJkcQ9k4qwP^7T%c=g&uU$E@9*%uvbWJ,B-=[x
+;#{<=v;J=CRbH*CI GyMZ%D/4 i$Wh]rk8.hn*r+-DM6.P?oWx<q~` r@Ivw13i\KXDzB7eO;sE*#ey[]uL;5-.VV$MHxw$#O)}Q c ;6&E9k~t(s!D)n2_DvlLncQrr:OC:r$U(j[B59v=-WAvES5JJ!vxE'JwAz;[Lq5i,7~%-{rE}hJ0}TZ_K3$2][47vOdU y~,0\r}Xd"U-Mej! I,s-Pi3H?blUcESO50!rHfu]s""]c"gPUTOf=B.=d
 
 Making system call 
 
@@ -12,4 +12,4 @@ System call returned 0.
 
 Sorted string:
 
-~~}}|zzzzyxxxxwwwwwwvvvuutttsrrqqqppppponmlkkkkiihhgfffffeddddddcccbbbbbba`__^]\\\\[[[[ZZZZYYXXXXXXWWVVVVUUUTTTTRQQQQPPPPONMLLLKJJHHGGGGGGFFEEEEEEDDDCCCCCBAA@@@@???>====<<;;;;;;::99998877766655544432111100//..----,,,++++******))))))(((&&&%%%%%%$$$$#""!  Ë‰
+~~~~}}}}{{zzyyyxxxwwwvvvvvvvuutssssrrrrrrrrrqqonnnllkkjjiiiihhhgffeeedddccccbb`__]]]]]\\[[[[ZZXXWWWVVUUUUUTTSSRQQPPPOOOOOOMMMMLLLKKJJJJJIIIHHHHGEEEEEEDDDDDCCCBBBAA@??=====<<;;;;;;::998777665555544333221000/....------,,,+***))(('&%%$$$$$###""""!!!!       Ë‰ÿÿÿÿ
