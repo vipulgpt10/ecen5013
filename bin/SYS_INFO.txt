@@ -3,7 +3,7 @@
 
  USER   : vipulgpt10
  USERID : 1000
- DATE   : Wed Jan 24 21:22:04 MST 2018
+ DATE   : Sun Feb 11 02:18:06 MST 2018
 
 -----------------------------------------------------
  __Operating System Information__
@@ -19,7 +19,7 @@
  Kernel                   : Linux
  Kernel version           : 4.14.15
  Kernel build information :
- Linux version 4.14.15 (vipulgpt10@vipulgpt10-VirtualBox) (gcc version 5.4.0 20160609 (Ubuntu 5.4.0-6ubuntu1~16.04.5)) #1 SMP Wed Jan 24 15:54:55 MST 2018
+ Linux version 4.14.15 (vipulgpt10@vipulgpt10-VirtualBox) (gcc version 5.4.0 20160609 (Ubuntu 5.4.0-6ubuntu1~16.04.5)) #5 SMP Thu Feb 1 23:38:36 MST 2018
 
 -----------------------------------------------------
  __System Architecture information__
@@ -38,8 +38,8 @@ CPU family:            6
 Model:                 142
 Model name:            Intel(R) Core(TM) i7-7500U CPU @ 2.70GHz
 Stepping:              9
-CPU MHz:               2903.994
-BogoMIPS:              5807.98
+CPU MHz:               2903.998
+BogoMIPS:              5807.99
 Hypervisor vendor:     KVM
 Virtualization type:   full
 L1d cache:             32K
@@ -53,13 +53,13 @@ Flags:                 fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca 
  __Information on File System Memory__
 
 Filesystem      Size  Used Avail Use% Mounted on
-udev            3.9G     0  3.9G   0% /dev
-tmpfs           825M  9.2M  815M   2% /run
-/dev/sda1        42G   28G   12G  71% /
-tmpfs           4.1G   23M  4.1G   1% /dev/shm
+udev            3.8G     0  3.8G   0% /dev
+tmpfs           798M  9.2M  789M   2% /run
+/dev/sda1        42G   25G   15G  63% /
+tmpfs           3.9G   26M  3.9G   1% /dev/shm
 tmpfs           5.0M  4.0K  5.0M   1% /run/lock
-tmpfs           4.1G     0  4.1G   0% /sys/fs/cgroup
-vmshare         163G   86G   78G  53% /media/sf_vmshare
-tmpfs           825M   96K  824M   1% /run/user/1000
+tmpfs           3.9G     0  3.9G   0% /sys/fs/cgroup
+vmshare         163G   87G   76G  54% /media/sf_vmshare
+tmpfs           798M   92K  798M   1% /run/user/1000
 
 -----------------------------------------------------
