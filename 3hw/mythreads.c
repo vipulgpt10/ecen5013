@@ -17,7 +17,6 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-#define MILLION 1000000
 
 clock_t t1;
 clock_t t2;
