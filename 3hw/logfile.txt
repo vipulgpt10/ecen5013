@@ -1,0 +1,77 @@
+Master:		Entering master thread
+Master:		Start time : 2018-02-18 21:52:25
+Master:		PID: 29990
+Master:		Linux thread id: 29990
+Child 1:	Entering child 1 thread
+Child 1:	Start time : 2018-02-18 21:52:25
+Child 1:	PID: 29990
+Child 1:	Linux thread id: 29991
+Child 1:	POSIX thread id: 139925847746304
+Child 1:	Char 	 Occurence
+Child 1:	x 	 3
+Child 1:	q 	 3
+Child 1:	z 	 3
+Child 1:	Leaving child 1 thread
+Child 1:	Exit time : 2018-02-18 21:52:25
+Child 2:	Entering child 2 thread
+Child 2:	Start time : 2018-02-18 21:52:25
+Child 2:	PID: 29990
+Child 2:	Linux thread id: 29992
+Child 2:	POSIX thread id: 139925839353600
+Child 2:	CPU utilization is 0.145408
+Child 2:	CPU utilization is 0.163265
+Child 2:	CPU utilization is 0.266667
+Child 2:	CPU utilization is 0.170543
+Child 2:	CPU utilization is 0.148241
+Child 2:	CPU utilization is 0.234694
+Child 2:	CPU utilization is 0.211735
+Child 2:	CPU utilization is 0.149367
+Child 2:	CPU utilization is 0.215938
+Child 2:	CPU utilization is 0.164524
+Child 2:	CPU utilization is 0.115681
+Child 2:	CPU utilization is 0.233333
+Child 2:	CPU utilization is 0.219144
+Child 2:	CPU utilization is 0.179028
+Child 2:	CPU utilization is 0.219388
+Child 2:	CPU utilization is 0.177215
+Child 2:	CPU utilization is 0.152672
+Child 2:	CPU utilization is 0.263959
+Child 2:	CPU utilization is 0.176020
+Child 2:	CPU utilization is 0.170483
+Child 2:	CPU utilization is 0.219072
+Child 2:	CPU utilization is 0.203562
+Child 2:	CPU utilization is 0.201531
+Child 2:	CPU utilization is 0.308901
+Child 2:	CPU utilization is 0.516710
+Child 2:	CPU utilization is 0.428941
+Child 2:	CPU utilization is 0.531250
+Child 2:	CPU utilization is 0.488372
+Child 2:	CPU utilization is 0.587927
+Child 2:	CPU utilization is 0.455729
+Child 2:	CPU utilization is 0.398977
+Child 2:	CPU utilization is 0.578406
+Child 2:	CPU utilization is 0.350384
+Child 2:	CPU utilization is 0.135897
+Child 2:	CPU utilization is 0.336815
+Child 2:	CPU utilization is 0.304348
+Child 2:	CPU utilization is 0.327320
+Child 2:	CPU utilization is 0.215736
+Child 2:	CPU utilization is 0.065657
+Child 2:	CPU utilization is 0.068528
+Child 2:	CPU utilization is 0.071066
+Child 2:	CPU utilization is 0.084184
+Child 2:	CPU utilization is 0.094148
+Child 2:	CPU utilization is 0.070886
+Child 2:	CPU utilization is 0.114286
+Child 2:	CPU utilization is 0.361323
+Child 2:	CPU utilization is 0.283465
+Child 2:	CPU utilization is 0.264103
+Child 2:	CPU utilization is 0.204082
+Child 2:	CPU utilization is 0.237113
+Child 2:	CPU utilization is 0.128205
+SIG_HL:		USR1 signal received
+SIG_HL:		Leaving child thread
+Master:		Time by child 1: 0.000136 secs
+Master:		Time by child 2: 0.000156 secs
+Master:		Leaving master thread
+Master:		Exit time : 2018-02-18 21:53:17
