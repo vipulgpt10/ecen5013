@@ -13,6 +13,37 @@
 #ifndef __I2C_WRAPPER_H__
 #define __I2C_WRAPPER_H__
 
+/* Include files */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+
+/* mraa header */
+#include <mraa/i2c.h>
+
+
+#define I2C_BUS	(2)
+
+
+mraa_result_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
+								const uint8_t data);
+
+
+mraa_result_t i2c_write_word(uint8_t address, const uint8_t cmd, 
+								const uint16_t data);
+
+
+mraa_result_t i2c_read_byte(uint8_t address, const uint8_t cmd, 
+								uint8_t data *);
+
+
+mraa_result_t i2c_read_bytes(uint8_t address, const uint8_t cmd, 
+								uint8_t data *, int length);
+
+
+static mraa_result_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status);
+
 /**
  * @brief Moves the data from source to destination
  *
