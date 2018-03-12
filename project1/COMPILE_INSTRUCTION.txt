@@ -1,0 +1,9 @@
+
+1. Copy all the files to BeagleBone green
+	$ scp i2c_wrapper.h i2c_wrapper.c light_task.c root@192.168.7.2:/home/test 
+
+2. cd to that directory
+
+3. $ gcc light_task.c i2c_wrapper.c -o light_task.o -lmraa -I. -lm
+
+4. $ ./light_task.o 

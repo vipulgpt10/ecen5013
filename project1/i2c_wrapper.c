@@ -13,19 +13,18 @@
 #include "i2c_wrapper.h"
 
 
-mraa_result_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
+int8_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
 								const uint8_t data)
 {
 	mraa_result_t status = MRAA_SUCCESS;
     mraa_i2c_context i2c;
 
-    mraa_init();
 
     i2c = mraa_i2c_init_raw(I2C_BUS);
     if (i2c == NULL) 
     {
         fprintf(stderr, "Failed to initialize I2C\n");
-        mraa_deinit();
+   
         return EXIT_FAILURE;
     }
 
@@ -42,26 +41,24 @@ mraa_result_t i2c_write_byte(uint8_t address, const uint8_t cmd,
     mraa_i2c_stop(i2c);
 
     /* deinitialize mraa for the platform  */
-    mraa_deinit();
 
     return EXIT_SUCCESS;
 
 }
 
 
-mraa_result_t i2c_write_word(uint8_t address, const uint8_t cmd, 
+int8_t i2c_write_word(uint8_t address, const uint8_t cmd, 
 								const uint16_t data)
 {
 	mraa_result_t status = MRAA_SUCCESS;
     mraa_i2c_context i2c;
 
-    mraa_init();
 
     i2c = mraa_i2c_init_raw(I2C_BUS);
     if (i2c == NULL) 
     {
         fprintf(stderr, "Failed to initialize I2C\n");
-        mraa_deinit();
+   
         return EXIT_FAILURE;
     }
 
@@ -78,26 +75,24 @@ mraa_result_t i2c_write_word(uint8_t address, const uint8_t cmd,
     mraa_i2c_stop(i2c);
 
     /* deinitialize mraa for the platform  */
-    mraa_deinit();
 
     return EXIT_SUCCESS;
 }
 
 
-mraa_result_t i2c_read_byte(uint8_t address, const uint8_t cmd,
-								uint8_t data *)
+int8_t i2c_read_byte(uint8_t address, const uint8_t cmd,
+								uint8_t * data)
 {
 	mraa_result_t status = MRAA_SUCCESS;
     mraa_i2c_context i2c;
     int8_t ret;
 
-    mraa_init();
 
     i2c = mraa_i2c_init_raw(I2C_BUS);
     if (i2c == NULL) 
     {
         fprintf(stderr, "Failed to initialize I2C\n");
-        mraa_deinit();
+   
         return EXIT_FAILURE;
     }
 
@@ -116,26 +111,24 @@ mraa_result_t i2c_read_byte(uint8_t address, const uint8_t cmd,
     mraa_i2c_stop(i2c);
 
     /* deinitialize mraa for the platform  */
-    mraa_deinit();
 
     return EXIT_SUCCESS;
 }
 
 
-mraa_result_t i2c_read_bytes(uint8_t address, const uint8_t cmd, uint8_t * data,
+int8_t i2c_read_bytes(uint8_t address, const uint8_t cmd, uint8_t * data,
 								 int length)
 {
 	mraa_result_t status = MRAA_SUCCESS;
     mraa_i2c_context i2c;
     int8_t ret;
 
-    mraa_init();
 
     i2c = mraa_i2c_init_raw(I2C_BUS);
     if (i2c == NULL) 
     {
         fprintf(stderr, "Failed to initialize I2C\n");
-        mraa_deinit();
+   
         return EXIT_FAILURE;
     }
 
@@ -152,12 +145,11 @@ mraa_result_t i2c_read_bytes(uint8_t address, const uint8_t cmd, uint8_t * data,
     mraa_i2c_stop(i2c);
 
     /* deinitialize mraa for the platform  */
-    mraa_deinit();
 
     return EXIT_SUCCESS;
 }
 
-static mraa_result_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status)
+static int8_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status)
 {
 	mraa_result_print(status);
 
@@ -165,7 +157,6 @@ static mraa_result_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status)
     mraa_i2c_stop(i2c);
 
     /* deinitialize mraa for the platform */
-    mraa_deinit();
 
     return EXIT_FAILURE;
 }

@@ -25,38 +25,67 @@
 
 #define I2C_BUS	(2)
 
-
-mraa_result_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
-								const uint8_t data);
-
-
-mraa_result_t i2c_write_word(uint8_t address, const uint8_t cmd, 
-								const uint16_t data);
-
-
-mraa_result_t i2c_read_byte(uint8_t address, const uint8_t cmd, 
-								uint8_t data *);
-
-
-mraa_result_t i2c_read_bytes(uint8_t address, const uint8_t cmd, 
-								uint8_t data *, int length);
-
-
-static mraa_result_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status);
-
 /**
- * @brief Moves the data from source to destination
+ * @brief Writes a byte of data using i2c
  *
- * Given the source and destination pointers and the length of the data,
- * it will move the data from source to destination and return the 
- * pointer to the destination.
+ * Given the device address, register address and the data,
+ * it will write the byte of data to the register specified.
  *
- * @param src Pointer to the source
- * @param dst Pointer to the destination
- * @param length Size of the data in bytes
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Data byte to be written
  *
- * @return Pointer to the destination
+ * @return Error code (0 Success)
  */
+int8_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
+								const uint8_t data);
+/**
+ * @brief Writes a word length of data using i2c
+ *
+ * Given the device address, register address and the data,
+ * it will write the word length of data to the register specified.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Data byte to be written
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_write_word(uint8_t address, const uint8_t cmd, 
+								const uint16_t data);
+/**
+ * @brief Reads a byte of data using i2c
+ *
+ * Given the device address, register address and data pointer,
+ * it will read the byte of data from the register specified and
+ * write it to the data variable.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Dat pointer
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_read_byte(uint8_t address, const uint8_t cmd, 
+								uint8_t * data);
+/**
+ * @brief Reads a series of data using i2c
+ *
+ * Given the device address, register address , data pointer and length,
+ * it will read the length of bytes of data from the register specified 
+ * and write it to the data buffer.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Dat pointer
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_read_bytes(uint8_t address, const uint8_t cmd, 
+								uint8_t * data, int length);
+
+/* Exit routine */
+static int8_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status);
 
 
 #endif	/* __I2C_WRAPPER_H__ */
