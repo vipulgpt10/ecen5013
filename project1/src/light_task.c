@@ -10,11 +10,12 @@
 //***********************************************************************************
 // Include files
 //***********************************************************************************
+#include "logger_task.h"
 #include "light_task.h"
 #include <fcntl.h>
 #include <errno.h>
 #include "main_task.h"
-#include "logger_task.h"
+
 
 //***********************************************************************************
 // Global variables/structures and Macros
@@ -26,7 +27,7 @@ int lightTask_sm_fd;
 extern int lightTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
-
+extern mqd_t logTask_mq_d;
 
 //***********************************************************************************
 //Function Definitions
@@ -233,7 +234,7 @@ int light_task_init(void)
   Task_Status_t light_status;
 
   /************Create Shared Memory to share task status with main ******/  
-  lightTask_sm_fd = shm_open(SM_NAME, O_CREAT | O_RDWR, 0666);
+  lightTask_sm_fd = shm_open(LIGHTTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
   if(lightTask_sm_fd == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT CREATED");
@@ -321,7 +322,6 @@ void light_task_thread(void)
     if(sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
     {
         LOG_TO_QUEUE(logData,LOG_ERR, LIGHT_TASK_ID,"POSIX TIMER CAN'T BE LINKED");
-        return 1;
     }
 
     LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER LINKED");
@@ -336,7 +336,7 @@ void light_task_thread(void)
     LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
 
-    while(!light_thread_kill);
+    while(!lightTask_kill);
 
     LOG_STD("[INFO] USR1:LIGHT THREAD KILL SIGNAL RECEIVED\n");
     

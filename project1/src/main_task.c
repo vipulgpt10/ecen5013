@@ -29,7 +29,7 @@
 /* array of task status strings */
 const char* task_statusString[]={"DEAD", "ALIVE"};
 /* array of function name strings*/
-const char *threadfun_name[]= { "logger_task_thread", "temp_task_thread", \  "light_task_thread","socket_task_thread","status_read_thread"};
+const char *threadfun_name[]= { "logger_task_thread", "temp_task_thread","light_task_thread","socket_task_thread","status_read_thread"};
 /* array of task id strings*/
 const char* taskId_nameString[MAIN_TASK_ID+1]= { "LOGGER_TASK_ID", "TEMP_TASK_ID", \
                                 "LIGHT_TASK_ID", "SOCKET_TASK_ID", "MAIN_TASK_ID" };
@@ -172,7 +172,7 @@ void status_read_thread(void)
   if( sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
   {
     LOG_TO_QUEUE(logData,LOG_ERR,MAIN_TASK_ID,"POSIX TIMER CAN'T BE LINKED");
-    return 1;
+    return ;
   }
 
   LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"POSIX TIMER LINKED");
