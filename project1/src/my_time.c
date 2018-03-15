@@ -28,8 +28,9 @@
  * @brief get_time_string()
  * This function gets the current time and converts into a string to be 
  * printed in logger message 
- * @signal: occured signal number
- * @return: None
+ * @timestring: Pointer to buffer to store the time as a string
+ * @len       : length of buffer
+ * @return: status(SUCCESS/FAILURE)
  ***********************************************************************/
 int get_time_string(char *timeString, const int len)
 {
