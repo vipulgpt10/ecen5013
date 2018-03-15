@@ -27,6 +27,7 @@ int socketTask_sm_fd;
 extern int socketTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
+extern mqd_t logTask_mq_d;
 
 //***********************************************************************************
 //Function Definitions

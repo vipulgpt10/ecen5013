@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <errno.h>
 #include <mqueue.h>
 #include <sys/mman.h>
 #include "main_task.h"

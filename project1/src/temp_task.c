@@ -26,6 +26,7 @@ int tempTask_sm_fd;
 extern int tempTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
+extern mqd_t logTask_mq_d;
 
 //***********************************************************************************
 //Function Definitions
@@ -326,7 +327,7 @@ void temperature_task_thread(void)
     LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
 
-    while(!temp_thread_kill);
+    while(!tempTask_kill);
 
     LOG_STD("[INFO] USR1:TEMP THREAD KILL SIGNAL RECEIVED\n");
     
