@@ -19,10 +19,10 @@
 //***********************************************************************************
 // Global variables/structures and Macros
 //***********************************************************************************
-/* logger shared memory*/
+/* light shared memory*/
 void *lightTask_sh_mem;
 int lightTask_sm_fd;
-/* logger task kill flag*/
+/* light task kill flag*/
 extern int lightTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
@@ -224,7 +224,7 @@ int8_t read_sensor_lux(float * data)
 /******************************************************************//**********
  * @brief light_task_init()
  * This function creates shared memory to share the task status.
- * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
+ * Shared Memory: To share light task's status(DEAD/ALIVE) with main_task.
  *****************************************************************************/
 int light_task_init(void) 
 {

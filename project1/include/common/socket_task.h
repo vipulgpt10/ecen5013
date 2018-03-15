@@ -1,6 +1,19 @@
-#ifndef __SERVER_H__
-#define __SERVER_H__
-
+/**
+* @file logger_task.h
+* @brief This file contains logger task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __SOCKET_TASK_H__
+#define __SOCKET_TASK_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
 #include <string.h>
 #include <stdio.h>
 #include <sys/socket.h>
@@ -11,8 +24,28 @@
 #include <stdbool.h>
 #include <pthread.h>
 
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
 #define PORT_ADR    2000
 
-void * server(void * data);
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+
+/******************************************************************//**********
+ * @brief set_Log_currentTimestamp()
+ * This function gets current timestamp and converts it into string.
+ *****************************************************************************/
+/******************************************************************//**********
+ * @brief socket_task_thread()
+ * This thread initializes socket connection
+ *****************************************************************************/
+void socket_task_thread(void);
 
 #endif

@@ -19,10 +19,10 @@
 //***********************************************************************************
 // Global variables/structures and Macros
 //***********************************************************************************
-/* logger shared memory*/
+/* temp shared memory*/
 void *tempTask_sh_mem;
 int tempTask_sm_fd;
-/* logger task kill flag*/
+/* temp task kill flag*/
 extern int tempTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
@@ -212,7 +212,7 @@ int8_t read_thigh_celsius(float * data)
 /******************************************************************//**********
  * @brief temp_task_init()
  * This function creates shared memory to share the task status.
- * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
+ * Shared Memory: To share temp task's status(DEAD/ALIVE) with main_task.
  *****************************************************************************/
 int temp_task_init(void) 
 {
@@ -252,7 +252,7 @@ int temp_task_init(void)
   /* Copy the contents of payload into the shared memory */
   memcpy((char*)tempTask_sh_mem, (char*)&temp_status, SM_SIZE);
 
-  LOG_STD("[INFO] LIGHT TASK INITIALIZED SHARED MEMORY\n");
+  LOG_STD("[INFO] TEMP TASK INITIALIZED SHARED MEMORY\n");
 
   return SUCCESS;
 }
@@ -287,12 +287,12 @@ void timer_handler(int signal)
 void temperature_task_thread(void) 
 {
 	logTask_Msg_t logData;
-	Task_Status_t light_status;
+	Task_Status_t temp_status;
 	struct itimerval timer;
     struct sigaction timer_sig;
     int ret;
 	
-	/* wait light task so that other tasks(logger task queue) are synchronized with it*/
+	/* wait temp task so that other tasks(temp task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
 	
 	LOG_STD("[INFO] TEMP TASK STARTED\n");

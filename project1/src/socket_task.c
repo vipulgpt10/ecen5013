@@ -1,23 +1,116 @@
+/**
+ * @file socket_task.c
+ * @brief This file contains socket task functionality.
+ *
+ * @author Vipul Gupta
+ * @date Mar 16, 2018
+ *
+ */
 
-
+//***********************************************************************************
+// Include files
+//***********************************************************************************
 #include "socket_task.h"
 #include "light_task.h"
 #include "temp_task.h"
 #include "led_task.h"
 
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* logger shared memory*/
+void *socketTask_sh_mem;
+int socketTask_sm_fd;
+/* logger task kill flag*/
+extern int socketTask_kill;
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
 
-void * server(void * data)
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief socket_task_init()
+ * This function creates shared memory to share the task status.
+ * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
+ *****************************************************************************/
+int socket_task_init(void) 
 {
+  logTask_Msg_t logData;
+  int ret;
+  Task_Status_t socket_status;
+
+  /************Create Shared Memory to share task status with main ******/  
+  socketTask_sm_fd = shm_open(SOCKETTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
+  if(socketTask_sm_fd == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,SOCKET_TASK_ID,"SHARED MEMORY NOT CREATED");
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,SOCKET_TASK_ID,"SHARED MEMORY CREATED");
+
+  /* truncate shared memory with required size */
+  ret = ftruncate(socketTask_sm_fd, SM_SIZE);
+  if(ret == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,SOCKET_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,SOCKET_TASK_ID,"SHARED MEMORY TRUNCATED");
+
+  /*map the shared memory */
+  socketTask_sh_mem = mmap(NULL, SM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED , socketTask_sm_fd, 0);
+  if(socketTask_sh_mem == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,SOCKET_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    return -1;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,SOCKET_TASK_ID, "SHARED MEMORY MAPPED");
+
+  /**** Enter the task status into shared memory *****/
+  socket_status=ALIVE;
+  /* Copy the contents of payload into the shared memory */
+  memcpy((char*)socketTask_sh_mem, (char*)&socket_status, SM_SIZE);
+
+  LOG_STD("[INFO] SOCKET TASK INITIALIZED SHARED MEMORY\n");
+
+  return SUCCESS;
+}
+
+/******************************************************************//**********
+ * @brief socket_task_thread()
+ * This thread initializes socket connection
+ *****************************************************************************/
+void socket_task_thread(void) 
+{
+	logTask_Msg_t logData;
+	Task_Status_t socket_status;
+	struct itimerval timer;
+    struct sigaction timer_sig;
+    int ret;
     struct sockaddr_in addr, peer_addr;
     int addr_len = sizeof(peer_addr);
     int i =0;
     size_t len, read_b;
-
     char read_buff[100];
     char write_buff[100];
     int server_socket, accepted_soc, opt = 1;
+    
+    /* wait socket task so that other tasks(logger task queue) are synchronized with it*/
+	pthread_barrier_wait(&tasks_barrier);
+	
+	LOG_STD("[INFO] SOCKET TASK STARTED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET TASK STARTED");	
+	ret= socket_task_init();
+	if(ERROR == ret)
+	{
+		LOG_STD("[ERROR] SOCKET TASK INIT: %s\n", strerror(errno));
+		exit(ERROR);
+	}
+	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET TASK INITIALIZED");
+	
 
-    while(1)
+    while(!socketTask_kill)
     {
       
       /* create socket */
@@ -143,8 +236,6 @@ void * server(void * data)
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
         
-        
-
     printf("==== SERVER thread ++++\n");
 
     close(accepted_soc);
@@ -152,7 +243,15 @@ void * server(void * data)
     close(server_socket);
     }
 
+    LOG_STD("[INFO] USR1:SOCKET THREAD KILL SIGNAL RECEIVED\n");
+    
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] SOCKET TASK KILL SIGNAL RECEIVED\n");
+	/* Update task status in shared memory */
+	socket_status=DEAD;
+	/* Copy the contents of payload into the share memory */
+	memcpy((char*)socketTask_sh_mem, (char*)&socket_status, SM_SIZE);
+	
     pthread_exit(NULL);
-
 }
 
