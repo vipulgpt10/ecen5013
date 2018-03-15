@@ -75,7 +75,7 @@ int logger_task_init(void)
 
 
   /************Create Shared Memory to share task status with main ******/	
-  logTask_sm_fd = shm_open(SM_NAME, O_CREAT | O_RDWR, 0666);
+  logTask_sm_fd = shm_open(LOGTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
   if(logTask_sm_fd == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,LOGGER_TASK_ID,"SHARED MEMORY NOT CREATED");

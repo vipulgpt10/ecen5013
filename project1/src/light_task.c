@@ -1,7 +1,24 @@
-/* Light task */
+/**
+ * @file light_task.c
+ * @brief This file contains light task functionality.
+ *
+ * @author Vipul Gupta
+ * @date Mar 14, 2018
+ *
+ */
 
+//***********************************************************************************
+// Include files
+//***********************************************************************************
 #include "light_task.h"
+#include <fcntl.h>
+#include <errno.h>
+#include "main_task.h"
+#include "logger_task.h"
 
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
 /* logger shared memory*/
 void *lightTask_sh_mem;
 int lightTask_sm_fd;
@@ -11,37 +28,69 @@ extern int lightTask_kill;
 extern pthread_barrier_t tasks_barrier;
 
 
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief write_control_reg()
+ * This function writes sensor control register with data,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_control_reg(const uint8_t data)
 {
 	return i2c_write_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_CONTROL_REG), data);
 }
 
-
+/******************************************************************//**********
+ * @brief read_control_reg()
+ * This function reads sensor control register,
+ * @data: pointer to store read data
+ *****************************************************************************/
 int8_t read_control_reg(uint8_t * data)
 {
 	return i2c_read_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_CONTROL_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief write_timing_reg()
+ * This function writes to timing register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_timing_reg(const uint8_t data)
 {
 	return i2c_write_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_TIMING_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief read_timing_reg()
+ * This function reads timing register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_timing_reg(uint8_t * data)
 {
 	return i2c_read_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_TIMING_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief write_intthresh_low_reg()
+ * This function writes to intthreshold low register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_intthresh_low_reg(const uint16_t data)
 {
 	return i2c_write_word(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_WORD_REG | APDS_INTTHLOW_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief read_intthresh_low_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to stor ethe read data
+ *****************************************************************************/
 int8_t read_intthresh_low_reg(uint16_t * data)
 {
 	int8_t ret;
@@ -53,17 +102,27 @@ int8_t read_intthresh_low_reg(uint16_t * data)
 	if(ret == EXIT_FAILURE)
     	return EXIT_FAILURE;
 
-    val = ((uint16_t)arr[1] << 8 | arr[0]);
-    *data = val;
-    return ret;
+	val = ((uint16_t)arr[1] << 8 | arr[0]);
+ 	*data = val;
+	return ret;
 }
 
+/******************************************************************//**********
+ * @brief write_intthresh_high_reg()
+ * This function writes to inthreshold register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_intthresh_high_reg(const uint16_t data)
 {
 	return i2c_write_word(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_WORD_REG | APDS_INTTHHIGH_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief read_intthresh_high_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_intthresh_high_reg(uint8_t * data)
 {
 	int8_t ret;
@@ -75,29 +134,49 @@ int8_t read_intthresh_high_reg(uint8_t * data)
 	if(ret == EXIT_FAILURE)
     	return EXIT_FAILURE;
 
-    val = ((uint16_t)arr[1] << 8 | arr[0]);
-    *data = val;
-    return ret;
+	val = ((uint16_t)arr[1] << 8 | arr[0]);
+	*data = val;
+	return ret;
 }
 
+/******************************************************************//**********
+ * @brief write_intcontrol_reg()
+ * This function writes to intcontrol register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_intcontrol_reg(const uint8_t data)
 {
 	return i2c_write_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_INTCTRL_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief read_intcontrol_reg()
+ * This function reads intcontrol register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_intcontrol_reg(uint8_t * data)
 {
 	return i2c_read_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_INTCTRL_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief read_id_reg()
+ * This function reads id register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_id_reg(uint8_t * data)
 {
 	return i2c_read_byte(APDS_SENS_DEV_ADDR,
 			(APDS_CMD_BYTE_REG | APDS_ID_REG), data);
 }
 
+/******************************************************************//**********
+ * @brief read_sensor_lux()
+ * This function reads the sensor lux,
+ * @data: pointer to strore the read data
+ *****************************************************************************/
 int8_t read_sensor_lux(float * data)
 {
 	int8_t ret;
@@ -110,20 +189,20 @@ int8_t read_sensor_lux(float * data)
 	if(ret == EXIT_FAILURE)
     	return EXIT_FAILURE;
 
-    ch0 = ((uint16_t)arr[1] << 8 | arr[0]);
+	ch0 = ((uint16_t)arr[1] << 8 | arr[0]);
 
-    printf("ch0 : %0.4x\n", ch0);
+	printf("ch0 : %0.4x\n", ch0);
 
-    ret = i2c_read_bytes(APDS_SENS_DEV_ADDR, 
+	ret = i2c_read_bytes(APDS_SENS_DEV_ADDR, 
     			(APDS_CMD_BYTE_REG | APDS_D1LOW_REG), arr, 2);
 	if(ret == EXIT_FAILURE)
     	return EXIT_FAILURE;
 
-    ch1 = ((uint16_t)arr[1] << 8 | arr[0]);
+	ch1 = ((uint16_t)arr[1] << 8 | arr[0]);
 
-    printf("ch1 : %0.4x\n", ch1);
+	printf("ch1 : %0.4x\n", ch1);
 
-    if(((float)ch1/ch0) <= 0.5 &&  ((float)ch1/ch0) > 0)
+	if(((float)ch1/ch0) <= 0.5 &&  ((float)ch1/ch0) > 0)
    		s_lux = (0.0304 * ch0) - (0.062 * ch0 * pow(((float)ch1/ch0), 1.4));
 
    	else if(((float)ch1/ch0) <= 0.61 &&  ((float)ch1/ch0) > 0.5)
@@ -139,16 +218,13 @@ int8_t read_sensor_lux(float * data)
 
    	*data = s_lux;
 
-    return ret;
-
+	return ret;
 }
 
 /******************************************************************//**********
- * @brief logger_task_init()
- * This function creates below,
- * Message Queue: To log messages from all the running tasks.
+ * @brief light_task_init()
+ * This function creates shared memory to share the task status.
  * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
- * LogFile      : To store messages received from its message queue.
  *****************************************************************************/
 int light_task_init(void) 
 {
@@ -190,37 +266,24 @@ int light_task_init(void)
 
   LOG_STD("[INFO] LIGHT TASK INITIALIZED SHARED MEMORY\n");
 
-  return logTask_mq_d;
+  return SUCCESS;
 }
+
 /******************************************************************//****
  * @brief timer_handler()
- * This is a timer_handler occurs every 3s and gets the status of all 
- * running threads(DEAD/ALIVE) by reading each tasks shared memory. 
- * And logs these statusses into logger message queue
+ * This is a timer_handler occurs every 3s and updates the light parameters
  * @signal: occured signal number
  * @return: None
  ***********************************************************************/
 void timer_handler(int signal)
 {
   logTask_Msg_t logData;
-  Task_Status_t logger_status;
+  float lux;
 
-  /* read status from logger task shared memory */
-  memcpy((char*)&logger_status,(char*)logTask_sh_mem,SM_SIZE);
-
-  /*** similarly read other task statusses from their shared memory ****/
-
-  LOG_STD("[INFO] READING TASK STATUS\n" );
-  printf("Logger Status:%s\n",task_statusString[logger_status]);
-  if( logger_status != DEAD )
-  {
-    LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"LOGGER TASK STATUS: [%s]\n", \
-                                            task_statusString[logger_status]);
-  }
-  else //logger DEAD so no logging to logger queue instead to standard output
-  {
-    LOG_STD("[INFO] LOGGER TASK STATUS: [%s]\n",task_statusString[logger_status] );
-  }
+  /***** Read the sensor and display****/
+  LOG_STD("[INFO] READING LIGHT SENSOR\n" );
+  read_sensor_lux(&lux);
+  LOG_STD("[INFO] SENSOR LUX: %f\n", lux );
 }
 
 /******************************************************************//**********
@@ -229,42 +292,30 @@ void timer_handler(int signal)
  *****************************************************************************/
 void light_task_thread(void) 
 {
-  logTask_Msg_t logData;
-  Task_Status_t light_status;
-  int ret;
-
-  LOG_STD("[INFO] LIGHT TASK STARTED\n");
-  ret= light_task_init();
-  if(ERROR == ret)
-  {
-    LOG_STD("[ERROR] LIGHT TASK INIT: %s\n", strerror(errno));
-    exit(ERROR);
-  }
-
-  /* wait logger task so that other tasks are synchronized with it*/
-  pthread_barrier_wait(&tasks_barrier);
-
-  /*********** KILL Signal Received ***********/
-  LOG_STD("[INFO] LIGHT TASK KILL SIGNAL RECEIVED\n");
-  /* Update task status in shared memory */
-  light_status=DEAD;
-  /* Copy the contents of payload into the share memory */
-  memcpy((char*)lightTask_sh_mem, (char*)&light_status, SM_SIZE);
-
-  pthread_exit(NULL);
-}
-
-void * light_thread(void * data)
-{
-    
-    struct itimerval timer;
+	logTask_Msg_t logData;
+	Task_Status_t light_status;
+	struct itimerval timer;
     struct sigaction timer_sig;
-    logTask_Msg_t logData;
     int ret;
+	
+	/* wait light task so that other tasks(logger task queue) are synchronized with it*/
+	pthread_barrier_wait(&tasks_barrier);
+	
+	LOG_STD("[INFO] LIGHT TASK STARTED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK STARTED");	
+	ret= light_task_init();
+	if(ERROR == ret)
+	{
+		LOG_STD("[ERROR] LIGHT TASK INIT: %s\n", strerror(errno));
+		exit(ERROR);
+	}
+	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK INITIALIZED");
+	
+	/* Turning on Light sensor*/
+	write_control_reg(POWER_ON);
+	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"TURNED ON LIGHT SENSOR");
 
-    pthread_barrier_wait(&tasks_barrier);
-
-    /************** Signal Handler Linking to POSIX timer *******/
+    /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
     timer_sig.sa_handler= &timer_handler;
     if(sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
@@ -285,66 +336,16 @@ void * light_thread(void * data)
     LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
 
-    while(!status_thread_kill);
+    while(!light_thread_kill);
 
-    LOG_STD("[INFO] USR2: LIGHT THREAD KILL SIGNAL RECEIVED\n");
-
-  /***** Unlink Shared Memories of all tasks ******/
-  ret= close(logTask_sm_fd);
-  if(ERROR == ret)
-  {
-    LOG_STD("[ERROR] LOGTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
-  }
-  LOG_STD("[INFO] LOGTASK SHARED MEMORY CLOSED\n");
-
-  ret=shm_unlink(SM_NAME);
-  if(ERROR == ret)
-  {
-    LOG_STD("[ERROR] LOGTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
-  }
-  LOG_STD("[INFO] LOGTASK SHARED MEMORY UNLINKED\n");
-
-
-  /***** similarly unlink each task shared memories ******/
-  pthread_exit(NULL);
-
-
-
-    /* Test code */
-
-    int8_t ret;
-    uint8_t temp;
-    float lux;
-    uint16_t thr;
-
-    write_control_reg(POWER_ON);
-
-    read_control_reg(&temp);
-   
-    printf("Control reg: 0x%0.2x\n", temp);
-
-    read_id_reg(&temp);
-
-    printf("ID reg: %0.2x\n", temp);
-
-    write_intthresh_low_reg(0x0101);
-
-    read_intthresh_low_reg(&thr);
-    printf("Threshold: 0x%0.4x\n", thr);
-
+    LOG_STD("[INFO] USR1:LIGHT THREAD KILL SIGNAL RECEIVED\n");
     
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] LIGHT TASK KILL SIGNAL RECEIVED\n");
+	/* Update task status in shared memory */
+	light_status=DEAD;
+	/* Copy the contents of payload into the share memory */
+	memcpy((char*)lightTask_sh_mem, (char*)&light_status, SM_SIZE);
 
-    while(1)
-    {
-        read_sensor_lux(&lux);
-
-        printf("Sensor LUX: %f\n", lux);
-        sleep(1);
-        //break;
-    }
-        
-    
-    pthread_exit(NULL);
+	pthread_exit(NULL);
 }
-
-

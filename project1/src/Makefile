@@ -2,8 +2,8 @@ include sources.mk
 
 CC:=gcc
 CFLAGS:= -g3 -o0 #-std=gnu11
-LDFLAGS:= -lpthread -lrt
-INCLUDES:= -I ../include/common -I ../include/cmocka
+LDFLAGS:= -lpthread -lrt -lm -lmraa
+INCLUDES:= -I ../include/common -I ../include/bbg
 
 OUTPUT_FILE_EXT:=.out
 OUTPUT_FILE:= project1$(OUTPUT_FILE_EXT)

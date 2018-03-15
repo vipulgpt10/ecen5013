@@ -1,11 +1,28 @@
-
-
+/**
+* @file light_task.h
+* @brief This file contains light task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
 #ifndef __LIGHT_TASK_H__
 #define __LIGHT_TASK_H__
-
+//***********************************************************************************
+// Include files
+//***********************************************************************************
 #include "i2c_wrapper.h"
 #include <math.h>
 #include <pthread.h>
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+/* shared memory name and size */
+#define LIGHTTASK_SM_NAME	   "lightTask_sharedMemory"
 
 /* Macro definitions */
 #define APDS_SENS_DEV_ADDR  0x39
@@ -33,32 +50,104 @@
 #define INTR_ON				(1<<4)
 #define INTR_OFF			(0<<4)
 
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
 
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief write_control_reg()
+ * This function writes sensor control register with data,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_control_reg(const uint8_t data);
 
+/******************************************************************//**********
+ * @brief read_control_reg()
+ * This function reads sensor control register,
+ * @data: pointer to store read data
+ *****************************************************************************/
 int8_t read_control_reg(uint8_t * data);
 
+/******************************************************************//**********
+ * @brief write_timing_reg()
+ * This function writes to timing register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_timing_reg(const uint8_t data);
 
+/******************************************************************//**********
+ * @brief read_timing_reg()
+ * This function reads timing register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_timing_reg(uint8_t * data);
 
+/******************************************************************//**********
+ * @brief write_intthresh_low_reg()
+ * This function writes to intthreshold low register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_intthresh_low_reg(const uint16_t data);
 
+/******************************************************************//**********
+ * @brief read_intthresh_low_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to stor ethe read data
+ *****************************************************************************/
 int8_t read_intthresh_low_reg(uint16_t * data);
 
+/******************************************************************//**********
+ * @brief write_intthresh_high_reg()
+ * This function writes to inthreshold register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_intthresh_high_reg(const uint16_t data);
 
+/******************************************************************//**********
+ * @brief read_intthresh_high_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_intthresh_high_reg(uint8_t * data);
 
+/******************************************************************//**********
+ * @brief write_intcontrol_reg()
+ * This function writes to intcontrol register,
+ * @data: data to write
+ *****************************************************************************/
 int8_t write_intcontrol_reg(const uint8_t data);
 
+/******************************************************************//**********
+ * @brief read_intcontrol_reg()
+ * This function reads intcontrol register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_intcontrol_reg(uint8_t * data);
 
+/******************************************************************//**********
+ * @brief read_id_reg()
+ * This function reads id register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
 int8_t read_id_reg(uint8_t * data);
 
+/******************************************************************//**********
+ * @brief read_sensor_lux()
+ * This function reads the sensor lux,
+ * @data: pointer to strore the read data
+ *****************************************************************************/
 int8_t read_sensor_lux(float * data);
 
-void * light_thread(void * data);
+
+/******************************************************************//**********
+ * @brief light_task_thread()
+ * This thread initializes the light task resources such as shared memory
+ *****************************************************************************/
+void light_task_thread(void);
 
 #endif
 

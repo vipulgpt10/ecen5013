@@ -36,7 +36,7 @@
 /* logger file name */
 #define LOGFILE_NAME      "/my_log.txt"
 /* shared memory name and size */
-#define SM_NAME	   "logTask_sharedMemory"
+#define LOGTASK_SM_NAME	   "logTask_sharedMemory"
 #define SM_SIZE     sizeof(Task_Status_t)
 
 /* Log level  type*/

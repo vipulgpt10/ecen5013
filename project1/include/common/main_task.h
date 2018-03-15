@@ -22,7 +22,7 @@
 // Defined Macros and Types
 //***********************************************************************************
 /* Macro to denote the number of threads */
-#define NUM_THREADS     2
+#define NUM_THREADS     5
 
 /* status macros */
 #define SUCCESS        0
@@ -32,10 +32,10 @@
 typedef enum
 {
   LOGGER_TASK_ID,
-  SOCKET_TASK_ID,
-  I2C_TEMP_TASK_ID,
-  I2C_LIGHT_TASK_ID,  
-  GPIO_TASK_ID,
+  TEMP_TASK_ID,
+  LIGHT_TASK_ID,
+  SOCKET_TASK_ID,  
+  //GPIO_TASK_ID,
   MAIN_TASK_ID
 }Task_Id_t;
 
