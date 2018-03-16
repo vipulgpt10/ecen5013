@@ -271,12 +271,12 @@ int light_task_init(void)
 }
 
 /******************************************************************//****
- * @brief timer_handler()
+ * @brief light_timer_handler()
  * This is a timer_handler occurs every 3s and updates the light parameters
  * @signal: occured signal number
  * @return: None
  ***********************************************************************/
-void timer_handler(int signal)
+void light_timer_handler(int signal)
 {
   logTask_Msg_t logData;
   float lux;
@@ -318,7 +318,7 @@ void light_task_thread(void)
 
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
-    timer_sig.sa_handler= &timer_handler;
+    timer_sig.sa_handler= &light_timer_handler;
     if(sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
     {
         LOG_TO_QUEUE(logData,LOG_ERR, LIGHT_TASK_ID,"POSIX TIMER CAN'T BE LINKED");

@@ -259,13 +259,13 @@ int temp_task_init(void)
 }
 
 /******************************************************************//****
- * @brief timer_handler()
+ * @brief temp_timer_handler()
  * This is a timer_handler occurs every 3s and updates the temperature
  * parameters
  * @signal: occured signal number
  * @return: None
  ***********************************************************************/
-void timer_handler(int signal)
+void temp_timer_handler(int signal)
 {
   float temp;
 
@@ -308,7 +308,7 @@ void temperature_task_thread(void)
 	
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
-    timer_sig.sa_handler= &timer_handler;
+    timer_sig.sa_handler= &temp_timer_handler;
     if(sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
     {
         LOG_TO_QUEUE(logData,LOG_ERR, TEMP_TASK_ID,"POSIX TIMER CAN'T BE LINKED");
