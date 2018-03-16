@@ -109,22 +109,4 @@ static inline void set_Log_currentTimestamp(logTask_Msg_t *log_msg)
     get_time_string(log_msg->time_stamp,sizeof(log_msg->time_stamp));
 }
 
-/******************************************************************//**********
- * @brief write_message_LogQueue()
- * This function writes message to logger queue. 
- * @queue     : Message queue to write into 
- * @logstruct : Logger message
- * @log_struct_size : Message size 
- *****************************************************************************/
-static inline void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
-                                                                 size_t log_struct_size)
-{
-  pthread_mutex_lock(&logQueue_mutex);
-  if(ERROR == mq_send(queue, (const char*)logstruct, log_struct_size,0))
-  {
-    LOG_STD("[ERROR] MQ_SEND:%s\n",strerror(errno));
-  }
-  pthread_mutex_unlock(&logQueue_mutex);
-}
-
 #endif /* __LOGGER_H__ */

@@ -40,6 +40,24 @@ pthread_mutex_t logQueue_mutex= PTHREAD_MUTEX_INITIALIZER;
 //Function Definitions
 //***********************************************************************************
 /******************************************************************//**********
+ * @brief write_message_LogQueue()
+ * This function writes message to logger queue. 
+ * @queue     : Message queue to write into 
+ * @logstruct : Logger message
+ * @log_struct_size : Message size 
+ *****************************************************************************/
+static inline void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
+                                                                 size_t log_struct_size)
+{
+  pthread_mutex_lock(&logQueue_mutex);
+  if(ERROR == mq_send(queue, (const char*)logstruct, log_struct_size,0))
+  {
+    LOG_STD("[ERROR] MQ_SEND:%s\n",strerror(errno));
+  }
+  pthread_mutex_unlock(&logQueue_mutex);
+}
+
+/******************************************************************//**********
  * @brief logger_task_init()
  * This function creates below,
  * Message Queue: To log messages from all the running tasks.
