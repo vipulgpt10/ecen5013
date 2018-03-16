@@ -33,6 +33,9 @@ extern pthread_barrier_t tasks_barrier;
 /* loglevel string names array*/
 const char* logLevel_nameString[LOG_ALL+1]= {"LOG_ERR","LOG_STATUS","LOG_INFO","LOG_ALL"};
 
+/***** Mutex Locks ****/
+pthread_mutex_t logQueue_mutex= PTHREAD_MUTEX_INITIALIZER;
+
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -53,7 +56,7 @@ int logger_task_init(void)
   /********* Create Logger Message Queue *************/
   /* initialize message queue attribute structure */
   logTaskQ_attr.mq_msgsize= sizeof(logTask_Msg_t);
-  logTaskQ_attr.mq_maxmsg= 8;
+  logTaskQ_attr.mq_maxmsg= 128;
   logTaskQ_attr.mq_flags= 0;
   logTaskQ_attr.mq_curmsgs= 0;
 

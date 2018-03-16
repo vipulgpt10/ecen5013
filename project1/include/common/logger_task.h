@@ -89,7 +89,7 @@ typedef struct
     name.source_ID= sourceId; \
     set_Log_currentTimestamp(&name);  \
     snprintf(name.lmq_data,sizeof(name.lmq_data),format, ##__VA_ARGS__); \
-    write_message_LogQueue(logTask_mq_d,&name,sizeof(name));
+    write_message_LogQueue(logTask_mq_d,&name,sizeof(name)); 
 
 //***********************************************************************************
 // Global Variables 
@@ -119,10 +119,12 @@ static inline void set_Log_currentTimestamp(logTask_Msg_t *log_msg)
 static inline void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
                                                                  size_t log_struct_size)
 {
-  if(ERROR == mq_send(queue, (const char*)logstruct, log_struct_size,20))
+  pthread_mutex_lock(&logQueue_mutex);
+  if(ERROR == mq_send(queue, (const char*)logstruct, log_struct_size,0))
   {
     LOG_STD("[ERROR] MQ_SEND:%s\n",strerror(errno));
   }
+  pthread_mutex_unlock(&logQueue_mutex);
 }
 
 #endif /* __LOGGER_H__ */
