@@ -13,7 +13,7 @@
 //***********************************************************************************
 #include <pthread.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <fcntl.h>f
 #include <errno.h>
 #include <sys/time.h>
 #include <signal.h>
@@ -93,14 +93,14 @@ void signal_handler(int signal)
       lightTask_kill=1;
       tempTask_kill=1;
       socketTask_kill=1;      
-      LOG_STD("[INFO] USR1 RECEIVED\n");
+      LOG_STD("[INFO] [SIG_HANDLER] USR1 RECEIVED\n");
       break;
     case SIGUSR2:
       status_thread_kill=1;
-      LOG_STD("[INFO] USR2 RECEIVED\n");
+      LOG_STD("[INFO] [SIG_HANDLER] USR2 RECEIVED\n");
       break;   
     default:
-      LOG_STD("[INFO] UNKNOWN SIGNAL\n");  
+      LOG_STD("[INFO] [SIG_HANDLER] UNKNOWN SIGNAL\n");  
    }
 }
 
@@ -117,8 +117,6 @@ void timer_handler(int signal)
   logTask_Msg_t logData;
   Task_Status_t logger_status, light_status, temp_status, socket_status;
 
-  printf("Status thread: in timer callback\n");
-
   /******** Read Shared memories of all the tasks to get the statusses *****/
   /* read status from logger task shared memory */
   memcpy((char*)&logger_status,(char*)logTask_sh_mem,SM_SIZE);
@@ -129,15 +127,14 @@ void timer_handler(int signal)
   /* read status from light task shared memory */
   memcpy((char*)&socket_status,(char*)socketTask_sh_mem,SM_SIZE);
   
-  /*** similarly read other task statusses from their shared memory ****/
 
-  LOG_STD("[INFO] READING TASK STATUS\n" );
-  LOG_STD("Logger Task Status:%s\n",task_statusString[logger_status]); 
-  LOG_STD("Light Task Status:%s\n",task_statusString[light_status]);
-  LOG_STD("Temp Task Status:%s\n",task_statusString[temp_status]); 
-  LOG_STD("Socket Task Status:%s\n",task_statusString[socket_status]);
+	LOG_STD("[INFO] [STATUS_HANDLER] READING TASK STATUS\n" );
+	LOG_STD("[INFO] [STATUS_HANDLER] LOGGER TASK STATUS: [%s]\n",task_statusString[logger_status] );
+	LOG_STD("[INFO] [STATUS_HANDLER] LIGHT TASK STATUS: [%s]\n", task_statusString[light_status]); 
+	LOG_STD("[INFO] [STATUS_HANDLER] TEMPERATURE TASK STATUS: [%s]\n",task_statusString[temp_status] );
+	LOG_STD("[INFO] [STATUS_HANDLER] SOCKET TASK STATUS: [%s]\n", task_statusString[socket_status]); 
    
-  if( logger_status != DEAD )
+  if( logger_status != DEAD ) //if logger DEAD no logger queue
   {
     LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"LOGGER TASK STATUS: [%s]\n", \
                                             task_statusString[logger_status]);
@@ -147,13 +144,6 @@ void timer_handler(int signal)
                                               task_statusString[temp_status]);
     LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"SOCKET TASK STATUS: [%s]\n", \
                                               task_statusString[socket_status]);       
-  }
-  else //logger DEAD so no logging to logger queue instead to standard output
-  {
-    LOG_STD("[INFO] LOGGER TASK STATUS: [%s]\n",task_statusString[logger_status] );
-    LOG_STD("[INFO] LIGHT TASK STATUS: [%s]\n", task_statusString[light_status]); 
-    LOG_STD("[INFO] TEMPERATURE TASK STATUS: [%s]\n",task_statusString[temp_status] );
-    LOG_STD("[INFO] SOCKET TASK STATUS: [%s]\n", task_statusString[socket_status]);   
   }
 
 }
@@ -166,136 +156,110 @@ void timer_handler(int signal)
 void status_read_thread(void) 
 {
   struct itimerval timer;
-  struct sigaction timer_sig;
   logTask_Msg_t logData;
   int ret;
-  
-      struct sigevent sev;
+	struct sigevent sev;
     struct itimerspec its;
     long long freq_nanosecs;
     sigset_t mask;
     struct sigaction sa;
     
+	LOG_STD("[INFO] [MAIN_STATUS] WAITING AT TASK BARRIER\n");
+	pthread_barrier_wait(&tasks_barrier);
+	LOG_STD("[INFO] [MAIN_STATUS] CROSSED TASK BARRIER\n");
 
-  printf("Status thread: before barrier\n");
-
-  pthread_barrier_wait(&tasks_barrier);
-
-  printf("Status thread: after barrier\n");
-
-#if 0
-  /************** Signal Handler Linking to POSIX timer *******/
-  memset( &timer_sig, 0, sizeof(timer_sig) );
-  timer_sig.sa_handler= &timer_handler;
-  if( sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
-  {
-    LOG_TO_QUEUE(logData,LOG_ERR,MAIN_TASK_ID,"POSIX TIMER CAN'T BE LINKED");
-    return ;
-  }
-
-  LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"POSIX TIMER LINKED");
-
-  /* set up timer to expire every 100ms */
-  timer.it_value.tv_sec= 1;
-  timer.it_value.tv_usec=0;  
-  timer.it_interval.tv_sec=1;
-  timer.it_interval.tv_usec=0; 
-  setitimer( ITIMER_VIRTUAL, &timer, NULL);
-
-  LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"POSIX TIMER SETUP DONE");
-  LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
-#endif
-  printf("Status thread: after timer setup\n");
-  
-  
-      printf("MAIN: Establishing handler ");
-   /* sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = timer_handler;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIG, &sa, NULL); */
-
+    /************** POSIX Timer setup *******/
+	LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"SETTING TIMER HANDLER");
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = timer_handler;
     sev.sigev_value.sival_ptr = &main_timerid;
     timer_create(CLOCK_REALTIME, &sev, &main_timerid);
+    
     /* Start the timer */
-
-    its.it_value.tv_sec = 10;
+    its.it_value.tv_sec = 5;
     its.it_value.tv_nsec = 0;
     its.it_interval.tv_sec = its.it_value.tv_sec;
     its.it_interval.tv_nsec = its.it_value.tv_nsec;
 
     timer_settime(main_timerid, 0, &its, NULL);
-   
-    printf("MAIN: Establishing timer ");
+	LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"TIMER SETUP DONE");
+	LOG_STD("[INFO] [MAIN_STATUS] POSIX TIMER SETUP DONE\n");
 
-  while(!status_thread_kill);
-  
-  timer_delete(main_timerid);
-  printf("status thread timer deleted");
-  
-  LOG_STD("[INFO] USR2: STATUS READ THREAD KILL SIGNAL RECEIVED\n");
+    while(!status_thread_kill);
+    
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] [MAIN_STATUS] KILL SIGNAL RECEIVED\n");
+	timer_delete(main_timerid);
+	LOG_STD("[INFO] [MAIN_STATUS] TIMER DELETED\n");
 
   /***** Unlink Shared Memories of all tasks ******/
   /* free logger task shared memory */
   ret= close(logTask_sm_fd);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] LOGTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] LOGTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] LOGTASK SHARED MEMORY CLOSED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] LOGTASK SHARED MEMORY CLOSED\n");
 
   ret=shm_unlink(LOGTASK_SM_NAME);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] LOGTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] LOGTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] LOGTASK SHARED MEMORY UNLINKED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] LOGTASK SHARED MEMORY UNLINKED\n");
 
   /* free light task shared memory */
   ret= close(lightTask_sm_fd);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] LIGHTTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] LIGHTTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] LIGHTTASK SHARED MEMORY CLOSED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] LIGHTTASK SHARED MEMORY CLOSED\n");
 
   ret=shm_unlink(LIGHTTASK_SM_NAME);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] LIGHTTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] LIGHTTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] LIGHTTASK SHARED MEMORY UNLINKED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] LIGHTTASK SHARED MEMORY UNLINKED\n");
   
   /* free temp task shared memory */
   ret= close(tempTask_sm_fd);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] TEMPTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] TEMPTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] TEMPTASK SHARED MEMORY CLOSED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] TEMPTASK SHARED MEMORY CLOSED\n");
 
   ret=shm_unlink(TEMPTASK_SM_NAME);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] TEMPTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] TEMPTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] TEMPTASK SHARED MEMORY UNLINKED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] TEMPTASK SHARED MEMORY UNLINKED\n");
   
   /* free socket task shared memory */
   ret= close(socketTask_sm_fd);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] SOCKETTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] SOCKETTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] SOCKETTASK SHARED MEMORY CLOSED\n");
+  LOG_STD("[INFO] [MAIN_STATUS] SOCKETTASK SHARED MEMORY CLOSED\n");
 
   ret=shm_unlink(SOCKETTASK_SM_NAME);
   if(ERROR == ret)
   {
-    LOG_STD("[ERROR] SOCKETTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LOG_STD("[ERROR] [MAIN_STATUS] SOCKETTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
   }
-  LOG_STD("[INFO] SOCKETTASK SHARED MEMORY UNLINKED\n");  
+  LOG_STD("[INFO] [MAIN_STATUS] SOCKETTASK SHARED MEMORY UNLINKED\n");  
   
   pthread_exit(NULL);
 }
@@ -316,36 +280,31 @@ int main( int argc, char** argv )
 
   /* create barrier for all threads and main */
   pthread_barrier_init( &tasks_barrier, NULL, NUM_THREADS+1);
-
-  pthread_barrier_init( &init_barrier, NULL, 3);
-
-  /* Startup test here!! */
+  pthread_barrier_init( &init_barrier, NULL, 3); //light+temp+main
 
   LED_INIT();
+  LED_OFF();
 
   /**** Thread Creation *******/
-  LOG_STD("[INFO] CREATING THREADS \n");
+  LOG_STD("[INFO] [MAIN] CREATING THREADS \n");
   /* run loop required thread number of times */
   for (index = 0; index< NUM_THREADS; index++) 
   {
     ret=pthread_create(&threads[index], NULL, thread_fun[index], NULL);
     if(ret==0)
     {
-      LOG_STD("[INFO] THREAD %s CREATED \n", threadfun_name[index]);
+      LOG_STD("[INFO] [MAIN] THREAD %s CREATED \n", threadfun_name[index]);
     }
     else
     {
-      LOG_STD("[ERROR] THREAD %s NOT CREATED: %s\n", threadfun_name[index], strerror(errno));
+      LOG_STD("[ERROR] [MAIN] THREAD %s NOT CREATED: %s\n", threadfun_name[index], strerror(errno));
+      LED_ON();
     }
   }
 
-  printf("Main thread: before barrier\n");
-
+  LOG_STD("[INFO] [MAIN] WAITING AT TASK BARRIER \n");
   pthread_barrier_wait(&tasks_barrier);
-
-  printf("Main thread: after barrier\n");
-
-  printf("Main thread: before  init barrier\n");
+  LOG_STD("[INFO] [MAIN] CROSSED TASK BARRIER \n");
 
   int sem_val;
 	sem_t * sem_start;
@@ -353,49 +312,44 @@ int main( int argc, char** argv )
 	sem_start = sem_open(SEM_START, O_CREAT, 0660, 0);
 
   pthread_barrier_wait(&init_barrier);
-
-  
-	sem_getvalue(sem_start, &sem_val);
-	printf("Sem Value in MAIN %d\n", sem_val);
-
-	printf("Calling startup test\n");
+	
+	LOG_STD("[INFO] [MAIN] START UP TEST\n");
+	//////startup here ////
 
 	sem_post(sem_start);
 	sem_post(sem_start);
-
-	sem_getvalue(sem_start, &sem_val);
-	printf("Sem Value in MAIN %d\n", sem_val);
-
-  printf("Main thread: after  init barrier\n");
 
   /****** Signal Handler Linking to SIGUSR1 & SIGUSR2 *******/
   user_sig.sa_handler= &signal_handler;
   /* link USR1 signal: kills all threads except status_read thread*/
   if( sigaction(SIGUSR1, &user_sig, NULL)<0 )
   {
-    LOG_STD("[ERROR] USR1 NOT LINKED\n" );
+    LOG_STD("[ERROR] [MAIN] USR1 NOT LINKED\n" );
+    LED_ON();
     return 1;
   }
   /* link USR2 signal: kills status_read thread*/  
   if( sigaction(SIGUSR2, &user_sig, NULL)<0 )
   {
-    LOG_STD("[ERROR] USR2 NOT LINKED\n" );
+    LOG_STD("[ERROR] [MAIN] USR2 NOT LINKED\n" );
+    LED_ON();
     return 1;
   }
 
   /***** Waiting for threads to complete ******/
-  LOG_STD("[INFO] WAITING FOR THREADS COMPLETION \n");
+  LOG_STD("[INFO] [MAIN] WAITING FOR THREADS COMPLETION \n");
   /* run loop required thread number of times */
   for (index = 0; index< NUM_THREADS; index++) 
   {
     ret=pthread_join(threads[index], NULL);
     if(ret==0)
     {
-      LOG_STD("[INFO] THREAD %s COMPLETED\n", threadfun_name[index]);
+      LOG_STD("[INFO] [MAIN] THREAD %s COMPLETED\n", threadfun_name[index]);
     }
     else
     {
-      LOG_STD("[ERROR] THREAD %s NOT COMPLETED: %s\n", threadfun_name[index], strerror(errno));
+      LOG_STD("[ERROR] [MAIN] THREAD %s NOT COMPLETED: %s\n", threadfun_name[index], strerror(errno));
+      LED_ON();
     }
   }
 

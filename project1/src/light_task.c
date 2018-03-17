@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "main_task.h"
-
+#include "led_task.h"
 
 //***********************************************************************************
 // Global variables/structures and Macros
@@ -29,8 +29,8 @@ extern int lightTask_kill;
 extern pthread_barrier_t tasks_barrier;
 extern pthread_barrier_t init_barrier;
 extern mqd_t logTask_mq_d;
-
 timer_t light_timerid;
+
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -194,16 +194,12 @@ int8_t read_sensor_lux(float * data)
 
 	ch0 = ((uint16_t)arr[1] << 8 | arr[0]);
 
-	printf("ch0 : %0.4x\n", ch0);
-
 	ret = i2c_read_bytes(APDS_SENS_DEV_ADDR, 
     			(APDS_CMD_BYTE_REG | APDS_D1LOW_REG), arr, 2);
 	if(ret == EXIT_FAILURE)
     	return EXIT_FAILURE;
 
 	ch1 = ((uint16_t)arr[1] << 8 | arr[0]);
-
-	printf("ch1 : %0.4x\n", ch1);
 
 	if(((float)ch1/ch0) <= 0.5 &&  ((float)ch1/ch0) > 0)
    		s_lux = (0.0304 * ch0) - (0.062 * ch0 * pow(((float)ch1/ch0), 1.4));
@@ -240,6 +236,7 @@ int light_task_init(void)
   if(lightTask_sm_fd == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT CREATED");
+    LED_ON();
     return ERROR;
   }
   LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SHARED MEMORY CREATED");
@@ -249,6 +246,7 @@ int light_task_init(void)
   if(ret == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    LED_ON();
     return ERROR;
   }
   LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SHARED MEMORY TRUNCATED");
@@ -258,6 +256,7 @@ int light_task_init(void)
   if(lightTask_sh_mem == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    LED_ON();
     return -1;
   }
   LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SHARED MEMORY MAPPED");
@@ -267,7 +266,7 @@ int light_task_init(void)
   /* Copy the contents of payload into the shared memory */
   memcpy((char*)lightTask_sh_mem, (char*)&light_status, SM_SIZE);
 
-  LOG_STD("[INFO] LIGHT TASK INITIALIZED SHARED MEMORY\n");
+  LOG_STD("[INFO] [LIGHT] INITIALIZED SHARED MEMORY\n");
 
   return SUCCESS;
 }
@@ -283,12 +282,12 @@ void light_timer_handler(int signal)
   logTask_Msg_t logData;
   float lux;
 
-  printf("Light thread: inside timer handler here\n");
-
   /***** Read the sensor and display****/
-  LOG_STD("[INFO] READING LIGHT SENSOR\n" );
+  LOG_STD("[INFO] [LIGHT_HANDLER] READING LIGHT SENSOR\n" );
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"READING LIGHT SENSOR");
   read_sensor_lux(&lux);
-  LOG_STD("[INFO] SENSOR LUX: %f\n", lux );
+  LOG_STD("[INFO] [LIGHT_HANDLER] SENSOR LUX: %f\n", lux );
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SENSOR LUX: %f\n", lux);
 }
 
 /******************************************************************//**********
@@ -300,28 +299,25 @@ void light_task_thread(void)
 	logTask_Msg_t logData;
 	Task_Status_t light_status;
 	struct itimerval timer;
-    struct sigaction timer_sig;
     int ret;
-
-	   struct sigevent sev;
+	struct sigevent sev;
     struct itimerspec its;
     long long freq_nanosecs;
     sigset_t mask;
     struct sigaction sa;
 
-    printf("Light thread: before barrier\n");
-	
+    LOG_STD("[INFO] [LIGHT] WAITING AT TASK BARRIER\n");
 	/* wait light task so that other tasks(logger task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
-
-	printf("Light thread: after barrier\n");
+	LOG_STD("[INFO] [LIGHT] CROSSED TASK BARRIER\n");
 	
-	LOG_STD("[INFO] LIGHT TASK STARTED\n");
+	LOG_STD("[INFO] [LIGHT] TASK STARTED\n");
 	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK STARTED");	
 	ret= light_task_init();
 	if(ERROR == ret)
 	{
-		LOG_STD("[ERROR] LIGHT TASK INIT: %s\n", strerror(errno));
+		LOG_STD("[ERROR] [LIGHT] TASK INIT: %s\n", strerror(errno));
+		LED_ON();
 		exit(ERROR);
 	}
 	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK INITIALIZED");
@@ -330,87 +326,38 @@ void light_task_thread(void)
 	write_control_reg(POWER_ON);
 	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"TURNED ON LIGHT SENSOR");
 
-	printf("Turned on Light Sensor\n");
 	pthread_barrier_wait(&init_barrier);
-	printf("Light thread : After init barrier\n");
 
 	int sem_val;
 	sem_t * sem_start;
 	/* Start semaphore initialized to 2 */
 	sem_start = sem_open(SEM_START, O_CREAT);
-
 	sem_getvalue(sem_start, &sem_val);
-	printf("Sem Value in LIGHT %d\n", sem_val);
-
 	sem_wait(sem_start);
 
-
-#if 0
     /************** POSIX Timer setup *******/
-    memset(&timer_sig, 0, sizeof(timer_sig));
-    timer_sig.sa_handler= &light_timer_handler;
-    if(sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
-    {
-        LOG_TO_QUEUE(logData,LOG_ERR, LIGHT_TASK_ID,"POSIX TIMER CAN'T BE LINKED");
-    }
-
-    LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER LINKED");
-
-    /* set up timer to expire every 100ms */
-    timer.it_value.tv_sec= 1;
-    timer.it_value.tv_usec=0;  
-    timer.it_interval.tv_sec=1;
-    timer.it_interval.tv_usec=0; 
-    //setitimer( ITIMER_VIRTUAL, &timer, NULL);
-
-    LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER SETUP DONE");
-    LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
-#endif
-
-      printf("LIGHT: Establishing handler ");
-
+	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SETTING TIMER HANDLER");
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = light_timer_handler;
     sev.sigev_value.sival_ptr = &light_timerid;
     timer_create(CLOCK_REALTIME, &sev, &light_timerid);
+    
     /* Start the timer */
-
     its.it_value.tv_sec = 5;
     its.it_value.tv_nsec = 0;
     its.it_interval.tv_sec = its.it_value.tv_sec;
     its.it_interval.tv_nsec = its.it_value.tv_nsec;
 
     timer_settime(light_timerid, 0, &its, NULL);
-   
-    printf("LIGHT: Established timer ");
-    
-    printf("LIGHT: after timer setup\n");
-
- 
-
-    while(!lightTask_kill);
-    timer_delete(light_timerid);
-#if 0
-    while(!lightTask_kill)
-	{
-
-
-  printf("Light thread: inside timer handler\n");
-
-  /***** Read the sensor and display****/
-  LOG_STD("[INFO] READING LIGHT SENSOR\n" );
-  read_sensor_lux(&lux);
-  LOG_STD("[INFO] SENSOR LUX: %f\n", lux );
-
-  sleep(2);
-	}
+	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"TIMER SETUP DONE");
+	LOG_STD("[INFO] [LIGHT] POSIX TIMER SETUP DONE\n");
 	
-	#endif
-
-    LOG_STD("[INFO] USR1:LIGHT THREAD KILL SIGNAL RECEIVED\n");
+    while(!lightTask_kill);
     
 	/*********** KILL Signal Received ***********/
-	LOG_STD("[INFO] LIGHT TASK KILL SIGNAL RECEIVED\n");
+	LOG_STD("[INFO] [LIGHT] KILL SIGNAL RECEIVED\n");
+	timer_delete(light_timerid);
+	LOG_STD("[INFO] [LIGHT] TIMER DELETED\n");
 	/* Update task status in shared memory */
 	light_status=DEAD;
 	/* Copy the contents of payload into the share memory */

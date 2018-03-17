@@ -65,7 +65,7 @@ typedef struct
  * @brief prints messages to standard output(screen).
  *****************************************************************************/
 #define   LOG_STD(format, ...)    \
-          printf("[PID:%d] [TID:%ld] [FUNC:%s]",getpid(), syscall(SYS_gettid), __func__); \
+          printf("[PID:%d] [TID:%ld]",getpid(), syscall(SYS_gettid)); \
           printf(format, ##__VA_ARGS__)
 
 /******************************************************************//**********

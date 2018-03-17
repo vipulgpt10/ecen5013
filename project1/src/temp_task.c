@@ -15,6 +15,7 @@
 #include <errno.h>
 #include "main_task.h"
 #include "logger_task.h"
+#include "led_task.h"
 
 //***********************************************************************************
 // Global variables/structures and Macros
@@ -28,8 +29,8 @@ extern int tempTask_kill;
 extern pthread_barrier_t tasks_barrier;
 extern pthread_barrier_t init_barrier;
 extern mqd_t logTask_mq_d;
-
 timer_t temp_timerid;
+
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -228,6 +229,7 @@ int temp_task_init(void)
   if(tempTask_sm_fd == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,TEMP_TASK_ID,"SHARED MEMORY NOT CREATED");
+    LED_ON();
     return ERROR;
   }
   LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SHARED MEMORY CREATED");
@@ -237,6 +239,7 @@ int temp_task_init(void)
   if(ret == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,TEMP_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    LED_ON();
     return ERROR;
   }
   LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SHARED MEMORY TRUNCATED");
@@ -246,6 +249,7 @@ int temp_task_init(void)
   if(tempTask_sh_mem == ERROR)
   {
     LOG_TO_QUEUE(logData,LOG_ERR,TEMP_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    LED_ON();
     return -1;
   }
   LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SHARED MEMORY MAPPED");
@@ -255,7 +259,7 @@ int temp_task_init(void)
   /* Copy the contents of payload into the shared memory */
   memcpy((char*)tempTask_sh_mem, (char*)&temp_status, SM_SIZE);
 
-  LOG_STD("[INFO] TEMP TASK INITIALIZED SHARED MEMORY\n");
+  LOG_STD("[INFO] [TEMP] TASK INITIALIZED SHARED MEMORY\n");
 
   return SUCCESS;
 }
@@ -271,18 +275,21 @@ void temp_timer_handler(int signal)
 {
   float temp;
 
-  printf("Temp thread: inside timer handler\n");
-
   /***** Read the sensor and display****/
-  LOG_STD("[INFO] READING TEMPERATURE SENSOR\n" );
+  LOG_STD("[INFO] [TEMP_HANDLER] READING TEMPERATURE SENSOR\n" );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"READING TEMPERATURE SENSOR");
+  
   read_temp_celsius(&temp);
-  LOG_STD("[INFO] TEMPERATURE IN CELSIUS: %f\n", temp );
+  LOG_STD("[INFO] [TEMP_HANDLER] TEMPERATURE IN CELSIUS: %f\n", temp );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TEMPERATURE IN CELSIUS: %f\n", temp);
   
   read_temp_fahrenheit(&temp);
-  LOG_STD("[INFO] TEMPERATURE IN FARENHEIT: %f\n", temp );
+  LOG_STD("[INFO] [TEMP_HANDLER] TEMPERATURE IN FARENHEIT: %f\n", temp );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TEMPERATURE IN FARENHEIT: %f\n", temp);
   
   read_temp_kelvin(&temp);
-  LOG_STD("[INFO] TEMPERATURE IN KELVIN: %f\n", temp );
+  LOG_STD("[INFO] [TEMP_HANDLER] TEMPERATURE IN KELVIN: %f\n", temp );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TEMPERATURE IN KELVIN: %f\n", temp);
 }
 
 /******************************************************************//**********
@@ -296,121 +303,59 @@ void temperature_task_thread(void)
 	struct itimerval timer;
     struct sigaction timer_sig;
     int ret;
-	
-	   struct sigevent sev;
+	struct sigevent sev;
     struct itimerspec its;
     long long freq_nanosecs;
     sigset_t mask;
     struct sigaction sa;
 	
-
-	printf("Temp thread: before barrier\n");
+	LOG_STD("[INFO] [TEMP] WAITING AT TASK BARRIER \n");
 	/* wait temp task so that other tasks(temp task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
-
-	printf("Temp thread: after barrier\n");
+	LOG_STD("[INFO] [TEMP] CROSSED TASK BARRIER \n");
 	
-	LOG_STD("[INFO] TEMP TASK STARTED\n");
+	LOG_STD("[INFO] [TEMP] TASK STARTED\n");
 	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK STARTED");	
 	ret= temp_task_init();
 	if(ERROR == ret)
 	{
-		LOG_STD("[ERROR] TEMP TASK INIT: %s\n", strerror(errno));
+		LOG_STD("[ERROR] [TEMP] TASK INIT: %s\n", strerror(errno));
+		LED_ON();
 		exit(ERROR);
 	}
 	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK INITIALIZED");
 
-	printf("Turned on Temp Sensor\n");
 	pthread_barrier_wait(&init_barrier);
-	printf("Temp thread : After init barrier\n");
 
 	int sem_val;
 	sem_t * sem_start;
 	/* Start semaphore initialized to 2 */
 	sem_start = sem_open(SEM_START, O_CREAT);
-
-	sem_getvalue(sem_start, &sem_val);
-	printf("Sem Value in TEMP %d\n", sem_val);
-
 	sem_wait(sem_start);
 
-	#if 0
     /************** POSIX Timer setup *******/
-    memset(&timer_sig, 0, sizeof(timer_sig));
-    timer_sig.sa_handler= &temp_timer_handler;
-    if(sigaction( SIGVTALRM, &timer_sig, NULL)<0 )
-    {
-        LOG_TO_QUEUE(logData,LOG_ERR, TEMP_TASK_ID,"POSIX TIMER CAN'T BE LINKED");
-        return 1;
-    }
-
-    LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"POSIX TIMER LINKED");
-
-    /* set up timer to expire every 100ms */
-    timer.it_value.tv_sec= 1;
-    timer.it_value.tv_usec=0;  
-    timer.it_interval.tv_sec=1;
-    timer.it_interval.tv_usec=0; 
-    //setitimer( ITIMER_VIRTUAL, &timer, NULL);
-
-    LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"POSIX TIMER SETUP DONE");
-    LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
-#endif
-
-      printf("TEMP: Establishing handler ");
-   /* sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = timer_handler;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIG, &sa, NULL); */
-
+	LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SETTING TIMER HANDLER");
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = temp_timer_handler;
     sev.sigev_value.sival_ptr = &temp_timerid;
     timer_create(CLOCK_REALTIME, &sev, &temp_timerid);
+    
     /* Start the timer */
-
     its.it_value.tv_sec = 5;
     its.it_value.tv_nsec = 0;
     its.it_interval.tv_sec = its.it_value.tv_sec;
     its.it_interval.tv_nsec = its.it_value.tv_nsec;
 
     timer_settime(temp_timerid, 0, &its, NULL);
-   
-    printf("TEMP: Establishing timer ");
+	LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TIMER SETUP DONE");
+	LOG_STD("[INFO] [TEMP] POSIX TIMER SETUP DONE\n");
     
-    printf("Temp thread: after timer setup\n");
-
- float temp;
-
- 
-
     while(!tempTask_kill);
-    timer_delete(temp_timerid);
-    #if 0
-    {
-
-
-  printf("Temp thread: inside timer handler\n");
-
-  /***** Read the sensor and display****/
-  LOG_STD("[INFO] READING TEMPERATURE SENSOR\n" );
-  read_temp_celsius(&temp);
-  LOG_STD("[INFO] TEMPERATURE IN CELSIUS: %f\n", temp );
-  
-  read_temp_fahrenheit(&temp);
-  LOG_STD("[INFO] TEMPERATURE IN FARENHEIT: %f\n", temp );
-  
-  read_temp_kelvin(&temp);
-  LOG_STD("[INFO] TEMPERATURE IN KELVIN: %f\n", temp );
-
-  sleep(4);
-    }
-#endif
-
-    LOG_STD("[INFO] USR1:TEMP THREAD KILL SIGNAL RECEIVED\n");
     
 	/*********** KILL Signal Received ***********/
-	LOG_STD("[INFO] TEMP TASK KILL SIGNAL RECEIVED\n");
+	LOG_STD("[INFO] [TEMP] TASK KILL SIGNAL RECEIVED\n");
+	timer_delete(temp_timerid);
+	LOG_STD("[INFO] [TEMP] TIMER DELETED\n");
 	/* Update task status in shared memory */
 	temp_status=DEAD;
 	/* Copy the contents of payload into the share memory */
