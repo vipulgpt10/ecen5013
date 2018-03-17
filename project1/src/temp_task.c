@@ -297,6 +297,13 @@ void temperature_task_thread(void)
     struct sigaction timer_sig;
     int ret;
 	
+	   struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+	
+
 	printf("Temp thread: before barrier\n");
 	/* wait temp task so that other tasks(temp task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);

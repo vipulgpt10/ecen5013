@@ -303,6 +303,12 @@ void light_task_thread(void)
     struct sigaction timer_sig;
     int ret;
 
+	   struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+
     printf("Light thread: before barrier\n");
 	
 	/* wait light task so that other tasks(logger task queue) are synchronized with it*/

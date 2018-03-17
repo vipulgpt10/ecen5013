@@ -216,7 +216,7 @@ void status_read_thread(void)
 
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = timer_handler;
-    sev.sigev_value.sival_ptr = &c;
+    sev.sigev_value.sival_ptr = &main_timerid;
     timer_create(CLOCK_REALTIME, &sev, &main_timerid);
     /* Start the timer */
 
