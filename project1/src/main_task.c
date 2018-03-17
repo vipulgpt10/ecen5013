@@ -29,7 +29,7 @@ const char* task_statusString[]={"DEAD", "ALIVE"};
 const char *threadfun_name[]= { "logger_task_thread", "status_read_thread"};
 /* array of task id strings*/
 const char* taskId_nameString[MAIN_TASK_ID+1]= { "LOGGER_TASK_ID", "SOCKET_TASK_ID", \
-            "I2C_TEMP_TASK_ID", "I2C_LIGHT_TASK_ID", "GPIO_TASK_ID", "MAIN_TASK_ID" };
+            "TEMP_TASK_ID", "LIGHT_TASK_ID", "GPIO_TASK_ID", "MAIN_TASK_ID" };
 /* barrier variable to synchronize all running tasks */
 pthread_barrier_t tasks_barrier;
 /* logger message queue descriptor*/
