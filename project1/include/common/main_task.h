@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <semaphore.h>
 
 //***********************************************************************************
 // Defined Macros and Types
@@ -27,6 +28,8 @@
 /* status macros */
 #define SUCCESS        0
 #define ERROR         -1
+
+#define SEM_START	"/sem-start"
 
 /* task ID type */
 typedef enum
