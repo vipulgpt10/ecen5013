@@ -1,15 +1,7 @@
 /* Temperature task */
 
-#include "i2c_wrapper.h"
 
-
-#define TMP102_DEV_ADDR		0x48
-
-#define TMP102_TEMP_REG		0x00
-#define TMP102_CONF_REG		0x01
-#define TMP102_TLOW_REG		0x02
-#define TMP102_THIGH_REG	0x03
-
+#include "temp_task.h"
 
 int8_t read_temp_celsius(float * data)
 {
@@ -155,7 +147,7 @@ int8_t read_thigh_celsius(float * data)
     return ret;
 }
 
-int main()
+void * temp_thread(void * data)
 {
 	float temp;
 
@@ -174,5 +166,5 @@ int main()
 
 	}
 
-	return EXIT_SUCCESS;
+	pthread_exit(NULL);
 }
