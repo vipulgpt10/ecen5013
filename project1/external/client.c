@@ -52,6 +52,8 @@ int main()
 		printf(" get_sensor_lux\t -Light Sensor Luminosity\n");
 		printf(" is_it_day?\n");
 		printf(" is_it_night?\n");
+		printf(" LED_ON\n");
+		printf(" LED_OFF\n");
 		printf(" \n");
 
 		printf("[Client] Enter the API: ");

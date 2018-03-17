@@ -1,8 +1,9 @@
 
 
-#include "server.h"
+#include "socket_task.h"
 #include "light_task.h"
 #include "temp_task.h"
+#include "led_task.h"
 
 
 void * server(void * data)
@@ -55,7 +56,6 @@ void * server(void * data)
         // printf("[Server] [ERROR] Can't listen connection\n");
         // return -1;
     }
-
     
     /*accept connection */
     accepted_soc = accept(server_socket, (struct sockaddr*)&peer_addr,
@@ -128,6 +128,18 @@ void * server(void * data)
         read_temp_kelvin(&temp);
         printf("Function call in temperature thread!\n");
         sprintf(tmp_msg, "Temperature = %f deg K\n", temp);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "LED_ON")) == 0)
+    {
+        LED_ON();
+        sprintf(tmp_msg, "USR_LED0 = ON\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "LED_OFF")) == 0)
+    {
+        LED_OFF();
+        sprintf(tmp_msg, "USR_LED0 = OFF\n");
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
         
