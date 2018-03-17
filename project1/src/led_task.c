@@ -40,4 +40,18 @@ void LED_OFF(void)
 	}
 }
 
+void LED_INIT(void)
+{
+	FILE * fptr = fopen(LED0_INITPATH, "w+");
+	
+	if(fptr == NULL)
+		return;
+	else
+	{
+		fprintf(fptr, "none");
+		fclose(fptr);
+		return;	
+	}	
+}
+
 

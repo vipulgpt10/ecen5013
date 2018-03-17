@@ -22,6 +22,7 @@
 #include "temp_task.h"
 #include "light_task.h"
 #include "socket_task.h"
+#include "led_task.h"
 
 //***********************************************************************************
 // Global variables/structures and Macros
@@ -113,6 +114,8 @@ void timer_handler(int signal)
   logTask_Msg_t logData;
   Task_Status_t logger_status, light_status, temp_status, socket_status;
 
+  printf("Status thread: in timer callback\n");
+
   /******** Read Shared memories of all the tasks to get the statusses *****/
   /* read status from logger task shared memory */
   memcpy((char*)&logger_status,(char*)logTask_sh_mem,SM_SIZE);
@@ -126,10 +129,10 @@ void timer_handler(int signal)
   /*** similarly read other task statusses from their shared memory ****/
 
   LOG_STD("[INFO] READING TASK STATUS\n" );
-  printf("Logger Task Status:%s\n",task_statusString[logger_status]); 
-  printf("Light Task Status:%s\n",task_statusString[light_status]);
-  printf("Temp Task Status:%s\n",task_statusString[temp_status]); 
-  printf("Socket Task Status:%s\n",task_statusString[socket_status]);
+  LOG_STD("Logger Task Status:%s\n",task_statusString[logger_status]); 
+  LOG_STD("Light Task Status:%s\n",task_statusString[light_status]);
+  LOG_STD("Temp Task Status:%s\n",task_statusString[temp_status]); 
+  LOG_STD("Socket Task Status:%s\n",task_statusString[socket_status]);
    
   if( logger_status != DEAD )
   {
@@ -164,7 +167,11 @@ void status_read_thread(void)
   logTask_Msg_t logData;
   int ret;
 
+  printf("Status thread: before barrier\n");
+
   pthread_barrier_wait(&tasks_barrier);
+
+  printf("Status thread: after barrier\n");
 
   /************** Signal Handler Linking to POSIX timer *******/
   memset( &timer_sig, 0, sizeof(timer_sig) );
@@ -186,6 +193,8 @@ void status_read_thread(void)
 
   LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"POSIX TIMER SETUP DONE");
   LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
+
+  printf("Status thread: after timer setup\n");
 
   while(!status_thread_kill);
   
@@ -272,6 +281,10 @@ int main( int argc, char** argv )
   /* create barrier for all threads and main */
   pthread_barrier_init( &tasks_barrier, NULL, NUM_THREADS+1);
 
+  /* Startup test here!! */
+
+  LED_INIT();
+
   /**** Thread Creation *******/
   LOG_STD("[INFO] CREATING THREADS \n");
   /* run loop required thread number of times */
@@ -288,7 +301,11 @@ int main( int argc, char** argv )
     }
   }
 
+  printf("Main thread: before barrier\n");
+
   pthread_barrier_wait(&tasks_barrier);
+
+  printf("Main thread: after barrier\n");
 
   /****** Signal Handler Linking to SIGUSR1 & SIGUSR2 *******/
   user_sig.sa_handler= &signal_handler;

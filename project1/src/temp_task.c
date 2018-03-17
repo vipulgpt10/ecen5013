@@ -269,6 +269,8 @@ void temp_timer_handler(int signal)
 {
   float temp;
 
+  printf("Temp thread: inside timer handler\n");
+
   /***** Read the sensor and display****/
   LOG_STD("[INFO] READING TEMPERATURE SENSOR\n" );
   read_temp_celsius(&temp);
@@ -293,8 +295,11 @@ void temperature_task_thread(void)
     struct sigaction timer_sig;
     int ret;
 	
+	printf("Temp thread: before barrier\n");
 	/* wait temp task so that other tasks(temp task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
+
+	printf("Temp thread: after barrier\n");
 	
 	LOG_STD("[INFO] TEMP TASK STARTED\n");
 	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK STARTED");	
@@ -305,7 +310,7 @@ void temperature_task_thread(void)
 		exit(ERROR);
 	}
 	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK INITIALIZED");
-	
+	#if 0
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
     timer_sig.sa_handler= &temp_timer_handler;
@@ -322,12 +327,36 @@ void temperature_task_thread(void)
     timer.it_value.tv_usec=0;  
     timer.it_interval.tv_sec=1;
     timer.it_interval.tv_usec=0; 
-    setitimer( ITIMER_VIRTUAL, &timer, NULL);
+    //setitimer( ITIMER_VIRTUAL, &timer, NULL);
 
     LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
+#endif
+    printf("Temp thread: after timer setup\n");
 
-    while(!tempTask_kill);
+ float temp;
+
+ 
+
+    while(!tempTask_kill)
+    {
+
+
+  printf("Temp thread: inside timer handler\n");
+
+  /***** Read the sensor and display****/
+  LOG_STD("[INFO] READING TEMPERATURE SENSOR\n" );
+  read_temp_celsius(&temp);
+  LOG_STD("[INFO] TEMPERATURE IN CELSIUS: %f\n", temp );
+  
+  read_temp_fahrenheit(&temp);
+  LOG_STD("[INFO] TEMPERATURE IN FARENHEIT: %f\n", temp );
+  
+  read_temp_kelvin(&temp);
+  LOG_STD("[INFO] TEMPERATURE IN KELVIN: %f\n", temp );
+
+  sleep(4);
+    }
 
     LOG_STD("[INFO] USR1:TEMP THREAD KILL SIGNAL RECEIVED\n");
     

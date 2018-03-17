@@ -46,7 +46,7 @@ pthread_mutex_t logQueue_mutex= PTHREAD_MUTEX_INITIALIZER;
  * @logstruct : Logger message
  * @log_struct_size : Message size 
  *****************************************************************************/
-static inline void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
+void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
                                                                  size_t log_struct_size)
 {
   pthread_mutex_lock(&logQueue_mutex);
@@ -156,7 +156,7 @@ void logger_task_process_MQ(void)
     if(ERROR !=ret)
     {
       /* log into file */
-      LOG_TO_FILE(mq_data);
+       LOG_TO_FILE(mq_data);
     }
   } 
 
@@ -181,8 +181,12 @@ void logger_task_thread(void)
     exit(ERROR);
   }
 
+  printf("Logger thread: before barrier\n");
+
   /* wait logger task so that other tasks are synchronized with it*/
   pthread_barrier_wait(&tasks_barrier);
+
+  printf("Logger thread: after barrier\n");
   /* start logger queue processing */
   logger_task_process_MQ();
 

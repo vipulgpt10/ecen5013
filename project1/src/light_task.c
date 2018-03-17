@@ -281,6 +281,8 @@ void light_timer_handler(int signal)
   logTask_Msg_t logData;
   float lux;
 
+  printf("Light thread: inside timer handler here\n");
+
   /***** Read the sensor and display****/
   LOG_STD("[INFO] READING LIGHT SENSOR\n" );
   read_sensor_lux(&lux);
@@ -298,9 +300,13 @@ void light_task_thread(void)
 	struct itimerval timer;
     struct sigaction timer_sig;
     int ret;
+
+    printf("Light thread: before barrier\n");
 	
 	/* wait light task so that other tasks(logger task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
+
+	printf("Light thread: after barrier\n");
 	
 	LOG_STD("[INFO] LIGHT TASK STARTED\n");
 	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK STARTED");	
@@ -315,7 +321,7 @@ void light_task_thread(void)
 	/* Turning on Light sensor*/
 	write_control_reg(POWER_ON);
 	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"TURNED ON LIGHT SENSOR");
-
+#if 0
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
     timer_sig.sa_handler= &light_timer_handler;
@@ -331,12 +337,30 @@ void light_task_thread(void)
     timer.it_value.tv_usec=0;  
     timer.it_interval.tv_sec=1;
     timer.it_interval.tv_usec=0; 
-    setitimer( ITIMER_VIRTUAL, &timer, NULL);
+    //setitimer( ITIMER_VIRTUAL, &timer, NULL);
 
     LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
+#endif
+    printf("Light thread: after timer setup\n");
 
-    while(!lightTask_kill);
+float lux;
+	
+	
+
+    while(!lightTask_kill)
+	{
+
+
+  printf("Light thread: inside timer handler\n");
+
+  /***** Read the sensor and display****/
+  LOG_STD("[INFO] READING LIGHT SENSOR\n" );
+  read_sensor_lux(&lux);
+  LOG_STD("[INFO] SENSOR LUX: %f\n", lux );
+
+  sleep(2);
+	}
 
     LOG_STD("[INFO] USR1:LIGHT THREAD KILL SIGNAL RECEIVED\n");
     

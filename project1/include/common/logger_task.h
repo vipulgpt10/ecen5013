@@ -64,7 +64,7 @@ typedef struct
 /******************************************************************//**********
  * @brief prints messages to standard output(screen).
  *****************************************************************************/
-#define   LOG_STD(format, ...)  \
+#define   LOG_STD(format, ...)    \
           printf("[PID:%d] [TID:%ld] [FUNC:%s]",getpid(), syscall(SYS_gettid), __func__); \
           printf(format, ##__VA_ARGS__)
 
@@ -99,6 +99,9 @@ extern const char* taskId_nameString[MAIN_TASK_ID+1];
 //***********************************************************************************
 // Function Prototypes
 //***********************************************************************************
+
+void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
+                                                                 size_t log_struct_size);
 
 /******************************************************************//**********
  * @brief set_Log_currentTimestamp()

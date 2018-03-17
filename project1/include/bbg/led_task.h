@@ -20,6 +20,8 @@
 /* Blue USR LED0 but green name! */
 #define LED0_PATH "/sys/class/leds/beaglebone:green:usr0/brightness"
 
+#define LED0_INITPATH "/sys/class/leds/beaglebone:green:usr0/trigger"
+
 
 /**
  * @brief Turns on USR LED0
@@ -36,5 +38,13 @@ void LED_ON(void);
  *
  */
 void LED_OFF(void);
+
+/**
+ * @brief Turns off USR LED0
+ *
+ * It turns OFF the USR LED0 on Beaglebone Green.
+ *
+ */
+void LED_INIT(void);
 
 #endif	/* __LIGHT_TASK_H__ */
