@@ -14,6 +14,7 @@
 #include <mqueue.h>
 
 #define PROC1_QUEUE_NAME   "/mq-exproc1"
+
 #define PROC2_QUEUE_NAME   "/mq-exproc2"
 
 #define MAX_MESSAGES 10
