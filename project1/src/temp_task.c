@@ -28,6 +28,7 @@ extern int tempTask_kill;
 extern pthread_barrier_t tasks_barrier;
 extern mqd_t logTask_mq_d;
 
+timer_t temp_timerid;
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -332,13 +333,37 @@ void temperature_task_thread(void)
     LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
 #endif
+
+      printf("TEMP: Establishing handler ");
+   /* sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = timer_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIG, &sa, NULL); */
+
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = temp_timer_handler;
+    sev.sigev_value.sival_ptr = &temp_timerid;
+    timer_create(CLOCK_REALTIME, &sev, &temp_timerid);
+    /* Start the timer */
+
+    its.it_value.tv_sec = 5;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    timer_settime(temp_timerid, 0, &its, NULL);
+   
+    printf("TEMP: Establishing timer ");
+    
     printf("Temp thread: after timer setup\n");
 
  float temp;
 
  
 
-    while(!tempTask_kill)
+    while(!tempTask_kill);
+    timer_delete(temp_timerid);
+    #if 0
     {
 
 
@@ -357,6 +382,7 @@ void temperature_task_thread(void)
 
   sleep(4);
     }
+#endif
 
     LOG_STD("[INFO] USR1:TEMP THREAD KILL SIGNAL RECEIVED\n");
     

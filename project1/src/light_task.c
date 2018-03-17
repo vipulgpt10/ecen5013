@@ -29,6 +29,7 @@ extern int lightTask_kill;
 extern pthread_barrier_t tasks_barrier;
 extern mqd_t logTask_mq_d;
 
+timer_t light_timerid;
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -342,12 +343,31 @@ void light_task_thread(void)
     LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"POSIX TIMER SETUP DONE");
     LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
 #endif
-    printf("Light thread: after timer setup\n");
 
-float lux;
-	
-	
+      printf("LIGHT: Establishing handler ");
 
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = light_timer_handler;
+    sev.sigev_value.sival_ptr = &light_timerid;
+    timer_create(CLOCK_REALTIME, &sev, &light_timerid);
+    /* Start the timer */
+
+    its.it_value.tv_sec = 5;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    timer_settime(light_timerid, 0, &its, NULL);
+   
+    printf("LIGHT: Established timer ");
+    
+    printf("LIGHT: after timer setup\n");
+
+ 
+
+    while(!lightTask_kill);
+    timer_delete(light_timerid);
+#if 0
     while(!lightTask_kill)
 	{
 
@@ -361,6 +381,8 @@ float lux;
 
   sleep(2);
 	}
+	
+	#endif
 
     LOG_STD("[INFO] USR1:LIGHT THREAD KILL SIGNAL RECEIVED\n");
     

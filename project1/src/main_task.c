@@ -70,6 +70,7 @@ extern void socket_task_thread();
 /* array of function pointers*/
 static void (*thread_fun[NUM_THREADS]) = { logger_task_thread, status_read_thread, temperature_task_thread, light_task_thread, socket_task_thread };
 
+timer_t main_timerid;
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -166,6 +167,13 @@ void status_read_thread(void)
   struct sigaction timer_sig;
   logTask_Msg_t logData;
   int ret;
+  
+      struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+    
 
   printf("Status thread: before barrier\n");
 
@@ -173,6 +181,7 @@ void status_read_thread(void)
 
   printf("Status thread: after barrier\n");
 
+#if 0
   /************** Signal Handler Linking to POSIX timer *******/
   memset( &timer_sig, 0, sizeof(timer_sig) );
   timer_sig.sa_handler= &timer_handler;
@@ -193,10 +202,35 @@ void status_read_thread(void)
 
   LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"POSIX TIMER SETUP DONE");
   LOG_STD("[INFO] POSIX TIMER SETUP DONE\n");
-
+#endif
   printf("Status thread: after timer setup\n");
+  
+  
+      printf("MAIN: Establishing handler ");
+   /* sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = timer_handler;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIG, &sa, NULL); */
+
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = timer_handler;
+    sev.sigev_value.sival_ptr = &c;
+    timer_create(CLOCK_REALTIME, &sev, &main_timerid);
+    /* Start the timer */
+
+    its.it_value.tv_sec = 10;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    timer_settime(main_timerid, 0, &its, NULL);
+   
+    printf("MAIN: Establishing timer ");
 
   while(!status_thread_kill);
+  
+  timer_delete(main_timerid);
+  printf("status thread timer deleted");
   
   LOG_STD("[INFO] USR2: STATUS READ THREAD KILL SIGNAL RECEIVED\n");
 
