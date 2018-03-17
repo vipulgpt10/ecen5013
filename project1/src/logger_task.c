@@ -56,6 +56,7 @@ int logger_task_init(void)
   /********* Create Logger Message Queue *************/
   /* initialize message queue attribute structure */
   logTaskQ_attr.mq_msgsize= sizeof(logTask_Msg_t);
+
   logTaskQ_attr.mq_maxmsg= 128;
   logTaskQ_attr.mq_flags= 0;
   logTaskQ_attr.mq_curmsgs= 0;

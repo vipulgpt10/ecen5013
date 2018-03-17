@@ -1,0 +1,16 @@
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LOGGER_TASK_ID lmq_data:MESSAGE QUEUE CREATED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LOGGER_TASK_ID lmq_data:LOG FILE CREATED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LOGGER_TASK_ID lmq_data:SHARED MEMORY CREATED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LOGGER_TASK_ID lmq_data:SHARED MEMORY TRUNCATED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LOGGER_TASK_ID lmq_data:SHARED MEMORY MAPPED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:MAIN_TASK_ID lmq_data:POSIX TIMER LINKED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:MAIN_TASK_ID lmq_data:POSIX TIMER SETUP DONE
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:TEMP_TASK_ID lmq_data:TEMP TASK STARTED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LIGHT_TASK_ID lmq_data:SHARED MEMORY MAPPED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:TEMP_TASK_ID lmq_data:SHARED MEMORY MAPPED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LIGHT_TASK_ID lmq_data:LIGHT TASK INITIALIZED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:TEMP_TASK_ID lmq_data:TEMP TASK INITIALIZED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:TEMP_TASK_ID lmq_data:POSIX TIMER LINKED
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:TEMP_TASK_ID lmq_data:POSIX TIMER SETUP DONE
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LIGHT_TASK_ID lmq_data:TURNED ON LIGHT SENSOR
+[PID:1850] [TID:1851] time_stamp:09:12:37 log_level:LOG_INFO source_ID:LIGHT_TASK_ID lmq_data:POSIX TIMER LINKED
