@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <semaphore.h>
 #include "main_task.h"
 #include "logger_task.h"
 #include "temp_task.h"
@@ -346,7 +347,24 @@ int main( int argc, char** argv )
 
   printf("Main thread: before  init barrier\n");
 
+  int sem_val;
+	sem_t * sem_start;
+	/* Start semaphore initialized to 2 */
+	sem_start = sem_open(SEM_START, O_CREAT, 0660, 0);
+
   pthread_barrier_wait(&init_barrier);
+
+  
+	sem_getvalue(sem_start, &sem_val);
+	printf("Sem Value in MAIN %d\n", sem_val);
+
+	printf("Calling startup test\n");
+
+	sem_post(sem_start);
+	sem_post(sem_start);
+
+	sem_getvalue(sem_start, &sem_val);
+	printf("Sem Value in MAIN %d\n", sem_val);
 
   printf("Main thread: after  init barrier\n");
 

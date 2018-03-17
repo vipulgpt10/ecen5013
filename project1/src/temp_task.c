@@ -317,6 +317,16 @@ void temperature_task_thread(void)
 	pthread_barrier_wait(&init_barrier);
 	printf("Temp thread : After init barrier\n");
 
+	int sem_val;
+	sem_t * sem_start;
+	/* Start semaphore initialized to 2 */
+	sem_start = sem_open(SEM_START, O_CREAT);
+
+	sem_getvalue(sem_start, &sem_val);
+	printf("Sem Value in TEMP %d\n", sem_val);
+
+	sem_wait(sem_start);
+
 	#if 0
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
