@@ -36,6 +36,7 @@ const char* taskId_nameString[MAIN_TASK_ID+1]= { "LOGGER_TASK_ID", "TEMP_TASK_ID
                                 "LIGHT_TASK_ID", "SOCKET_TASK_ID", "MAIN_TASK_ID" };
 /* barrier variable to synchronize all running tasks */
 pthread_barrier_t tasks_barrier;
+pthread_barrier_t init_barrier;
 /* logger message queue descriptor*/
 extern mqd_t logTask_mq_d;
 
@@ -315,6 +316,8 @@ int main( int argc, char** argv )
   /* create barrier for all threads and main */
   pthread_barrier_init( &tasks_barrier, NULL, NUM_THREADS+1);
 
+  pthread_barrier_init( &init_barrier, NULL, 3);
+
   /* Startup test here!! */
 
   LED_INIT();
@@ -340,6 +343,12 @@ int main( int argc, char** argv )
   pthread_barrier_wait(&tasks_barrier);
 
   printf("Main thread: after barrier\n");
+
+  printf("Main thread: before  init barrier\n");
+
+  pthread_barrier_wait(&init_barrier);
+
+  printf("Main thread: after  init barrier\n");
 
   /****** Signal Handler Linking to SIGUSR1 & SIGUSR2 *******/
   user_sig.sa_handler= &signal_handler;

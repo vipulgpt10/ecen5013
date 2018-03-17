@@ -27,6 +27,7 @@ int lightTask_sm_fd;
 extern int lightTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
+extern pthread_barrier_t init_barrier;
 extern mqd_t logTask_mq_d;
 
 timer_t light_timerid;
@@ -322,6 +323,12 @@ void light_task_thread(void)
 	/* Turning on Light sensor*/
 	write_control_reg(POWER_ON);
 	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"TURNED ON LIGHT SENSOR");
+
+	printf("Turned on Light Sensor\n");
+	pthread_barrier_wait(&init_barrier);
+	printf("Light thread : After init barrier\n");
+
+
 #if 0
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));

@@ -26,6 +26,7 @@ int tempTask_sm_fd;
 extern int tempTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
+extern pthread_barrier_t init_barrier;
 extern mqd_t logTask_mq_d;
 
 timer_t temp_timerid;
@@ -311,6 +312,11 @@ void temperature_task_thread(void)
 		exit(ERROR);
 	}
 	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK INITIALIZED");
+
+	printf("Turned on Temp Sensor\n");
+	pthread_barrier_wait(&init_barrier);
+	printf("Temp thread : After init barrier\n");
+
 	#if 0
     /************** POSIX Timer setup *******/
     memset(&timer_sig, 0, sizeof(timer_sig));
