@@ -1,7 +1,7 @@
 include sources.mk
 
 CC:=gcc
-CFLAGS:= -g3 -o0 #-std=gnu11
+CFLAGS:= 
 LDFLAGS:= -lpthread -lrt -lm -lmraa
 INCLUDES:= -I ../include/common -I ../include/bbg
 
