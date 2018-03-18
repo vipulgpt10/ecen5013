@@ -1,0 +1,5392 @@
+/*
+ * Copyright 2014 Luis Pabon, Jr.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * Programming by Contract is a programming methodology
+ * which binds the caller and the function called to a
+ * contract. The contract is represented using Hoare Triple:
+ *      {P} C {Q}
+ * where {P} is the precondition before executing command C,
+ * and {Q} is the postcondition.
+ *
+ * See also:
+ * http://en.wikipedia.org/wiki/Design_by_contract
+ * http://en.wikipedia.org/wiki/Hoare_logic
+ * http://dlang.org/dbc.html
+ */
+#ifndef CMOCKA_PBC_H_
+#define CMOCKA_PBC_H_
+
+#if defined(UNIT_TESTING) || defined (DEBUG)
+
+#include <assert.h>
+
+/*
+ * Checks caller responsibility against contract
+ */
+#define REQUIRE(cond) assert(cond)
+
+/*
+ * Checks function reponsability against contract.
+ */
+#define ENSURE(cond) assert(cond)
+
+/*
+ * While REQUIRE and ENSURE apply to functions, INVARIANT
+ * applies to classes/structs.  It ensures that intances
+ * of the class/struct are consistent. In other words,
+ * that the instance has not been corrupted.
+ */
+#define INVARIANT(invariant_fnc) do{ (invariant_fnc) } while (0);
+
+#else
+#define REQUIRE(cond) do { } while (0);
+#define ENSURE(cond) do { } while (0);
+#define INVARIANT(invariant_fnc) do{ } while (0);
+
+#endif /* defined(UNIT_TESTING) || defined (DEBUG) */
+#endif /* CMOCKA_PBC_H_ */
+
+/*
+ * Copyright 2008 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef CMOCKA_H_
+#define CMOCKA_H_
+
+#ifdef _WIN32
+# ifdef _MSC_VER
+
+#define __func__ __FUNCTION__
+
+# ifndef inline
+#define inline __inline
+# endif /* inline */
+
+#  if _MSC_VER < 1500
+#   ifdef __cplusplus
+extern "C" {
+#   endif   /* __cplusplus */
+int __stdcall IsDebuggerPresent();
+#   ifdef __cplusplus
+} /* extern "C" */
+#   endif   /* __cplusplus */
+#  endif  /* _MSC_VER < 1500 */
+# endif /* _MSC_VER */
+#endif  /* _WIN32 */
+
+/**
+ * @defgroup cmocka The CMocka API
+ *
+ * These headers or their equivalents should be included prior to including
+ * this header file.
+ * @code
+ * #include <stdarg.h>
+ * #include <stddef.h>
+ * #include <setjmp.h>
+ * @endcode
+ *
+ * This allows test applications to use custom definitions of C standard
+ * library functions and types.
+ *
+ * @{
+ */
+
+/* If __WORDSIZE is not set, try to figure it out and default to 32 bit. */
+#ifndef __WORDSIZE
+# if defined(__x86_64__) && !defined(__ILP32__)
+#  define __WORDSIZE 64
+# else
+#  define __WORDSIZE 32
+# endif
+#endif
+
+#ifdef DOXYGEN
+/**
+ * Largest integral type.  This type should be large enough to hold any
+ * pointer or integer supported by the compiler.
+ */
+typedef uintmax_t LargestIntegralType;
+#else /* DOXGEN */
+#ifndef LargestIntegralType
+# if __WORDSIZE == 64
+#  define LargestIntegralType unsigned long int
+# else
+#  define LargestIntegralType unsigned long long int
+# endif
+#endif /* LargestIntegralType */
+#endif /* DOXYGEN */
+
+/* Printf format used to display LargestIntegralType as a hexidecimal. */
+#ifndef LargestIntegralTypePrintfFormat
+# ifdef _WIN32
+#  define LargestIntegralTypePrintfFormat "0x%I64x"
+# else
+#  if __WORDSIZE == 64
+#   define LargestIntegralTypePrintfFormat "%#lx"
+#  else
+#   define LargestIntegralTypePrintfFormat "%#llx"
+#  endif
+# endif /* _WIN32 */
+#endif /* LargestIntegralTypePrintfFormat */
+
+/* Printf format used to display LargestIntegralType as a decimal. */
+#ifndef LargestIntegralTypePrintfFormatDecimal
+# ifdef _WIN32
+#  define LargestIntegralTypePrintfFormatDecimal "%I64u"
+# else
+#  if __WORDSIZE == 64
+#   define LargestIntegralTypePrintfFormatDecimal "%lu"
+#  else
+#   define LargestIntegralTypePrintfFormatDecimal "%llu"
+#  endif
+# endif /* _WIN32 */
+#endif /* LargestIntegralTypePrintfFormat */
+
+/* Perform an unsigned cast to LargestIntegralType. */
+#define cast_to_largest_integral_type(value) \
+    ((LargestIntegralType)(value))
+
+/* Smallest integral type capable of holding a pointer. */
+#if !defined(_UINTPTR_T) && !defined(_UINTPTR_T_DEFINED)
+# if defined(_WIN32)
+    /* WIN32 is an ILP32 platform */
+    typedef unsigned int uintptr_t;
+# elif defined(_WIN64)
+    typedef unsigned long int uintptr_t
+# else /* _WIN32 */
+
+/* ILP32 and LP64 platforms */
+#  ifdef __WORDSIZE /* glibc */
+#   if __WORDSIZE == 64
+      typedef unsigned long int uintptr_t;
+#   else
+      typedef unsigned int uintptr_t;
+#   endif /* __WORDSIZE == 64 */
+#  else /* __WORDSIZE */
+#   if defined(_LP64) || defined(_I32LPx)
+      typedef unsigned long int uintptr_t;
+#   else
+      typedef unsigned int uintptr_t;
+#   endif
+#  endif /* __WORDSIZE */
+# endif /* _WIN32 */
+
+# define _UINTPTR_T
+# define _UINTPTR_T_DEFINED
+#endif /* !defined(_UINTPTR_T) || !defined(_UINTPTR_T_DEFINED) */
+
+/* Perform an unsigned cast to uintptr_t. */
+#define cast_to_pointer_integral_type(value) \
+    ((uintptr_t)((size_t)(value)))
+
+/* Perform a cast of a pointer to LargestIntegralType */
+#define cast_ptr_to_largest_integral_type(value) \
+cast_to_largest_integral_type(cast_to_pointer_integral_type(value))
+
+/* GCC have printf type attribute check.  */
+#ifdef __GNUC__
+#define CMOCKA_PRINTF_ATTRIBUTE(a,b) \
+    __attribute__ ((__format__ (__printf__, a, b)))
+#else
+#define CMOCKA_PRINTF_ATTRIBUTE(a,b)
+#endif /* __GNUC__ */
+
+#if defined(__GNUC__)
+#define CMOCKA_DEPRECATED __attribute__ ((deprecated))
+#elif defined(_MSC_VER)
+#define CMOCKA_DEPRECATED __declspec(deprecated)
+#else
+#define CMOCKA_DEPRECATED
+#endif
+
+#define WILL_RETURN_ALWAYS -1
+#define WILL_RETURN_ONCE -2
+
+/**
+ * @defgroup cmocka_mock Mock Objects
+ * @ingroup cmocka
+ *
+ * Mock objects mock objects are simulated objects that mimic the behavior of
+ * real objects. Instead of calling the real objects, the tested object calls a
+ * mock object that merely asserts that the correct methods were called, with
+ * the expected parameters, in the correct order.
+ *
+ * <ul>
+ * <li><strong>will_return(function, value)</strong> - The will_return() macro
+ * pushes a value onto a stack of mock values. This macro is intended to be
+ * used by the unit test itself, while programming the behaviour of the mocked
+ * object.</li>
+ *
+ * <li><strong>mock()</strong> - the mock macro pops a value from a stack of
+ * test values. The user of the mock() macro is the mocked object that uses it
+ * to learn how it should behave.</li>
+ * </ul>
+ *
+ * Because the will_return() and mock() are intended to be used in pairs, the
+ * cmocka library would fail the test if there are more values pushed onto the
+ * stack using will_return() than consumed with mock() and vice-versa.
+ *
+ * The following unit test stub illustrates how would a unit test instruct the
+ * mock object to return a particular value:
+ *
+ * @code
+ * will_return(chef_cook, "hotdog");
+ * will_return(chef_cook, 0);
+ * @endcode
+ *
+ * Now the mock object can check if the parameter it received is the parameter
+ * which is expected by the test driver. This can be done the following way:
+ *
+ * @code
+ * int chef_cook(const char *order, char **dish_out)
+ * {
+ *     check_expected(order);
+ * }
+ * @endcode
+ *
+ * For a complete example please at a look
+ * <a href="http://git.cryptomilk.org/projects/cmocka.git/tree/example/chef_wrap/waiter_test_wrap.c">here</a>.
+ *
+ * @{
+ */
+
+#ifdef DOXYGEN
+/**
+ * @brief Retrieve a return value of the current function.
+ *
+ * @return The value which was stored to return by this function.
+ *
+ * @see will_return()
+ */
+LargestIntegralType mock(void);
+#else
+#define mock() _mock(__func__, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Retrieve a typed return value of the current function.
+ *
+ * The value would be casted to type internally to avoid having the
+ * caller to do the cast manually.
+ *
+ * @param[in]  #type  The expected type of the return value
+ *
+ * @return The value which was stored to return by this function.
+ *
+ * @code
+ * int param;
+ *
+ * param = mock_type(int);
+ * @endcode
+ *
+ * @see will_return()
+ * @see mock()
+ * @see mock_ptr_type()
+ */
+#type mock_type(#type);
+#else
+#define mock_type(type) ((type) mock())
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Retrieve a typed return value of the current function.
+ *
+ * The value would be casted to type internally to avoid having the
+ * caller to do the cast manually but also casted to uintptr_t to make
+ * sure the result has a valid size to be used as a pointer.
+ *
+ * @param[in]  #type  The expected type of the return value
+ *
+ * @return The value which was stored to return by this function.
+ *
+ * @code
+ * char *param;
+ *
+ * param = mock_ptr_type(char *);
+ * @endcode
+ *
+ * @see will_return()
+ * @see mock()
+ * @see mock_type()
+ */
+type mock_ptr_type(#type);
+#else
+#define mock_ptr_type(type) ((type) (uintptr_t) mock())
+#endif
+
+
+#ifdef DOXYGEN
+/**
+ * @brief Store a value to be returned by mock() later.
+ *
+ * @param[in]  #function  The function which should return the given value.
+ *
+ * @param[in]  value The value to be returned by mock().
+ *
+ * @code
+ * int return_integer(void)
+ * {
+ *      return (int)mock();
+ * }
+ *
+ * static void test_integer_return(void **state)
+ * {
+ *      will_return(return_integer, 42);
+ *
+ *      assert_int_equal(my_function_calling_return_integer(), 42);
+ * }
+ * @endcode
+ *
+ * @see mock()
+ * @see will_return_count()
+ */
+void will_return(#function, LargestIntegralType value);
+#else
+#define will_return(function, value) \
+    _will_return(#function, __FILE__, __LINE__, \
+                 cast_to_largest_integral_type(value), 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Store a value to be returned by mock() later.
+ *
+ * @param[in]  #function  The function which should return the given value.
+ *
+ * @param[in]  value The value to be returned by mock().
+ *
+ * @param[in]  count The parameter indicates the number of times the value should
+ *                   be returned by mock(). If count is set to -1, the value
+ *                   will always be returned but must be returned at least once.
+ *                   If count is set to -2, the value will always be returned
+ *                   by mock(), but is not required to be returned.
+ *
+ * @see mock()
+ */
+void will_return_count(#function, LargestIntegralType value, int count);
+#else
+#define will_return_count(function, value, count) \
+    _will_return(#function, __FILE__, __LINE__, \
+                 cast_to_largest_integral_type(value), count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Store a value that will be always returned by mock().
+ *
+ * @param[in]  #function  The function which should return the given value.
+ *
+ * @param[in]  #value The value to be returned by mock().
+ *
+ * This is equivalent to:
+ * @code
+ * will_return_count(function, value, -1);
+ * @endcode
+ *
+ * @see will_return_count()
+ * @see mock()
+ */
+void will_return_always(#function, LargestIntegralType value);
+#else
+#define will_return_always(function, value) \
+    will_return_count(function, (value), WILL_RETURN_ALWAYS)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Store a value that may be always returned by mock().
+ *
+ * This stores a value which will always be returned by mock() but is not
+ * required to be returned by at least one call to mock(). Therefore,
+ * in contrast to will_return_always() which causes a test failure if it
+ * is not returned at least once, will_return_maybe() will never cause a test
+ * to fail if its value is not returned.
+ *
+ * @param[in]  #function  The function which should return the given value.
+ *
+ * @param[in]  #value The value to be returned by mock().
+ *
+ * This is equivalent to:
+ * @code
+ * will_return_count(function, value, -2);
+ * @endcode
+ *
+ * @see will_return_count()
+ * @see mock()
+ */
+void will_return_maybe(#function, LargestIntegralType value);
+#else
+#define will_return_maybe(function, value) \
+    will_return_count(function, (value), WILL_RETURN_ONCE)
+#endif
+/** @} */
+
+/**
+ * @defgroup cmocka_param Checking Parameters
+ * @ingroup cmocka
+ *
+ * Functionality to store expected values for mock function parameters.
+ *
+ * In addition to storing the return values of mock functions, cmocka provides
+ * functionality to store expected values for mock function parameters using
+ * the expect_*() functions provided. A mock function parameter can then be
+ * validated using the check_expected() macro.
+ *
+ * Successive calls to expect_*() macros for a parameter queues values to check
+ * the specified parameter. check_expected() checks a function parameter
+ * against the next value queued using expect_*(), if the parameter check fails
+ * a test failure is signalled. In addition if check_expected() is called and
+ * no more parameter values are queued a test failure occurs.
+ *
+ * The following test stub illustrates how to do this. First is the the function
+ * we call in the test driver:
+ *
+ * @code
+ * static void test_driver(void **state)
+ * {
+ *     expect_string(chef_cook, order, "hotdog");
+ * }
+ * @endcode
+ *
+ * Now the chef_cook function can check if the parameter we got passed is the
+ * parameter which is expected by the test driver. This can be done the
+ * following way:
+ *
+ * @code
+ * int chef_cook(const char *order, char **dish_out)
+ * {
+ *     check_expected(order);
+ * }
+ * @endcode
+ *
+ * For a complete example please at a look at
+ * <a href="http://git.cryptomilk.org/projects/cmocka.git/tree/example/chef_wrap/waiter_test_wrap.c">here</a>
+ *
+ * @{
+ */
+
+/*
+ * Add a custom parameter checking function.  If the event parameter is NULL
+ * the event structure is allocated internally by this function.  If event
+ * parameter is provided it must be allocated on the heap and doesn't need to
+ * be deallocated by the caller.
+ */
+#ifdef DOXYGEN
+/**
+ * @brief Add a custom parameter checking function.
+ *
+ * If the event parameter is NULL the event structure is allocated internally
+ * by this function. If the parameter is provided it must be allocated on the
+ * heap and doesn't need to be deallocated by the caller.
+ *
+ * @param[in]  #function  The function to add a custom parameter checking
+ *                        function for.
+ *
+ * @param[in]  #parameter The parameters passed to the function.
+ *
+ * @param[in]  #check_function  The check function to call.
+ *
+ * @param[in]  check_data       The data to pass to the check function.
+ */
+void expect_check(#function, #parameter, #check_function, const void *check_data);
+#else
+#define expect_check(function, parameter, check_function, check_data) \
+    _expect_check(#function, #parameter, __FILE__, __LINE__, check_function, \
+                  cast_to_largest_integral_type(check_data), NULL, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value is part of the provided
+ *        array.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value_array[] The array to check for the value.
+ *
+ * @see check_expected().
+ */
+void expect_in_set(#function, #parameter, LargestIntegralType value_array[]);
+#else
+#define expect_in_set(function, parameter, value_array) \
+    expect_in_set_count(function, parameter, value_array, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value is part of the provided
+ *        array.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value_array[] The array to check for the value.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_in_set_count(#function, #parameter, LargestIntegralType value_array[], size_t count);
+#else
+#define expect_in_set_count(function, parameter, value_array, count) \
+    _expect_in_set(#function, #parameter, __FILE__, __LINE__, value_array, \
+                   sizeof(value_array) / sizeof((value_array)[0]), count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value is not part of the
+ *        provided array.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value_array[] The array to check for the value.
+ *
+ * @see check_expected().
+ */
+void expect_not_in_set(#function, #parameter, LargestIntegralType value_array[]);
+#else
+#define expect_not_in_set(function, parameter, value_array) \
+    expect_not_in_set_count(function, parameter, value_array, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value is not part of the
+ *        provided array.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value_array[] The array to check for the value.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_not_in_set_count(#function, #parameter, LargestIntegralType value_array[], size_t count);
+#else
+#define expect_not_in_set_count(function, parameter, value_array, count) \
+    _expect_not_in_set( \
+        #function, #parameter, __FILE__, __LINE__, value_array, \
+        sizeof(value_array) / sizeof((value_array)[0]), count)
+#endif
+
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check a parameter is inside a numerical range.
+ * The check would succeed if minimum <= value <= maximum.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  minimum  The lower boundary of the interval to check against.
+ *
+ * @param[in]  maximum  The upper boundary of the interval to check against.
+ *
+ * @see check_expected().
+ */
+void expect_in_range(#function, #parameter, LargestIntegralType minimum, LargestIntegralType maximum);
+#else
+#define expect_in_range(function, parameter, minimum, maximum) \
+    expect_in_range_count(function, parameter, minimum, maximum, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check a parameter is inside a
+ * numerical range. The check would succeed if minimum <= value <= maximum.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  minimum  The lower boundary of the interval to check against.
+ *
+ * @param[in]  maximum  The upper boundary of the interval to check against.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_in_range_count(#function, #parameter, LargestIntegralType minimum, LargestIntegralType maximum, size_t count);
+#else
+#define expect_in_range_count(function, parameter, minimum, maximum, count) \
+    _expect_in_range(#function, #parameter, __FILE__, __LINE__, minimum, \
+                     maximum, count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check a parameter is outside a numerical range.
+ * The check would succeed if minimum > value > maximum.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  minimum  The lower boundary of the interval to check against.
+ *
+ * @param[in]  maximum  The upper boundary of the interval to check against.
+ *
+ * @see check_expected().
+ */
+void expect_not_in_range(#function, #parameter, LargestIntegralType minimum, LargestIntegralType maximum);
+#else
+#define expect_not_in_range(function, parameter, minimum, maximum) \
+    expect_not_in_range_count(function, parameter, minimum, maximum, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check a parameter is outside a
+ * numerical range. The check would succeed if minimum > value > maximum.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  minimum  The lower boundary of the interval to check against.
+ *
+ * @param[in]  maximum  The upper boundary of the interval to check against.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_not_in_range_count(#function, #parameter, LargestIntegralType minimum, LargestIntegralType maximum, size_t count);
+#else
+#define expect_not_in_range_count(function, parameter, minimum, maximum, \
+                                  count) \
+    _expect_not_in_range(#function, #parameter, __FILE__, __LINE__, \
+                         minimum, maximum, count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if a parameter is the given value.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value  The value to check.
+ *
+ * @see check_expected().
+ */
+void expect_value(#function, #parameter, LargestIntegralType value);
+#else
+#define expect_value(function, parameter, value) \
+    expect_value_count(function, parameter, value, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check if a parameter is the given value.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value  The value to check.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_value_count(#function, #parameter, LargestIntegralType value, size_t count);
+#else
+#define expect_value_count(function, parameter, value, count) \
+    _expect_value(#function, #parameter, __FILE__, __LINE__, \
+                  cast_to_largest_integral_type(value), count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if a parameter isn't the given value.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value  The value to check.
+ *
+ * @see check_expected().
+ */
+void expect_not_value(#function, #parameter, LargestIntegralType value);
+#else
+#define expect_not_value(function, parameter, value) \
+    expect_not_value_count(function, parameter, value, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check if a parameter isn't the given value.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  value  The value to check.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_not_value_count(#function, #parameter, LargestIntegralType value, size_t count);
+#else
+#define expect_not_value_count(function, parameter, value, count) \
+    _expect_not_value(#function, #parameter, __FILE__, __LINE__, \
+                      cast_to_largest_integral_type(value), count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value is equal to the
+ *        provided string.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  string   The string value to compare.
+ *
+ * @see check_expected().
+ */
+void expect_string(#function, #parameter, const char *string);
+#else
+#define expect_string(function, parameter, string) \
+    expect_string_count(function, parameter, string, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value is equal to the
+ *        provided string.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  string   The string value to compare.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_string_count(#function, #parameter, const char *string, size_t count);
+#else
+#define expect_string_count(function, parameter, string, count) \
+    _expect_string(#function, #parameter, __FILE__, __LINE__, \
+                   (const char*)(string), count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value isn't equal to the
+ *        provided string.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  string   The string value to compare.
+ *
+ * @see check_expected().
+ */
+void expect_not_string(#function, #parameter, const char *string);
+#else
+#define expect_not_string(function, parameter, string) \
+    expect_not_string_count(function, parameter, string, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter value isn't equal to the
+ *        provided string.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  string   The string value to compare.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_not_string_count(#function, #parameter, const char *string, size_t count);
+#else
+#define expect_not_string_count(function, parameter, string, count) \
+    _expect_not_string(#function, #parameter, __FILE__, __LINE__, \
+                       (const char*)(string), count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter does match an area of memory.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  memory  The memory to compare.
+ *
+ * @param[in]  size  The size of the memory to compare.
+ *
+ * @see check_expected().
+ */
+void expect_memory(#function, #parameter, void *memory, size_t size);
+#else
+#define expect_memory(function, parameter, memory, size) \
+    expect_memory_count(function, parameter, memory, size, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check if the parameter does match an area
+ *        of memory.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  memory  The memory to compare.
+ *
+ * @param[in]  size  The size of the memory to compare.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_memory_count(#function, #parameter, void *memory, size_t size, size_t count);
+#else
+#define expect_memory_count(function, parameter, memory, size, count) \
+    _expect_memory(#function, #parameter, __FILE__, __LINE__, \
+                   (const void*)(memory), size, count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if the parameter doesn't match an area of
+ *        memory.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  memory  The memory to compare.
+ *
+ * @param[in]  size  The size of the memory to compare.
+ *
+ * @see check_expected().
+ */
+void expect_not_memory(#function, #parameter, void *memory, size_t size);
+#else
+#define expect_not_memory(function, parameter, memory, size) \
+    expect_not_memory_count(function, parameter, memory, size, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check if the parameter doesn't match an
+ *        area of memory.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  memory  The memory to compare.
+ *
+ * @param[in]  size  The size of the memory to compare.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_not_memory_count(#function, #parameter, void *memory, size_t size, size_t count);
+#else
+#define expect_not_memory_count(function, parameter, memory, size, count) \
+    _expect_not_memory(#function, #parameter, __FILE__, __LINE__, \
+                       (const void*)(memory), size, count)
+#endif
+
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to check if a parameter (of any value) has been passed.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @see check_expected().
+ */
+void expect_any(#function, #parameter);
+#else
+#define expect_any(function, parameter) \
+    expect_any_count(function, parameter, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Add an event to repeatedly check if a parameter (of any value) has
+ *        been passed.
+ *
+ * The event is triggered by calling check_expected() in the mocked function.
+ *
+ * @param[in]  #function  The function to add the check for.
+ *
+ * @param[in]  #parameter The name of the parameter passed to the function.
+ *
+ * @param[in]  count  The count parameter returns the number of times the value
+ *                    should be returned by check_expected(). If count is set
+ *                    to -1 the value will always be returned.
+ *
+ * @see check_expected().
+ */
+void expect_any_count(#function, #parameter, size_t count);
+#else
+#define expect_any_count(function, parameter, count) \
+    _expect_any(#function, #parameter, __FILE__, __LINE__, count)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Determine whether a function parameter is correct.
+ *
+ * This ensures the next value queued by one of the expect_*() macros matches
+ * the specified variable.
+ *
+ * This function needs to be called in the mock object.
+ *
+ * @param[in]  #parameter  The parameter to check.
+ */
+void check_expected(#parameter);
+#else
+#define check_expected(parameter) \
+    _check_expected(__func__, #parameter, __FILE__, __LINE__, \
+                    cast_to_largest_integral_type(parameter))
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Determine whether a function parameter is correct.
+ *
+ * This ensures the next value queued by one of the expect_*() macros matches
+ * the specified variable.
+ *
+ * This function needs to be called in the mock object.
+ *
+ * @param[in]  #parameter  The pointer to check.
+ */
+void check_expected_ptr(#parameter);
+#else
+#define check_expected_ptr(parameter) \
+    _check_expected(__func__, #parameter, __FILE__, __LINE__, \
+                    cast_ptr_to_largest_integral_type(parameter))
+#endif
+
+/** @} */
+
+/**
+ * @defgroup cmocka_asserts Assert Macros
+ * @ingroup cmocka
+ *
+ * This is a set of useful assert macros like the standard C libary's
+ * assert(3) macro.
+ *
+ * On an assertion failure a cmocka assert macro will write the failure to the
+ * standard error stream and signal a test failure. Due to limitations of the C
+ * language the general C standard library assert() and cmocka's assert_true()
+ * and assert_false() macros can only display the expression that caused the
+ * assert failure. cmocka's type specific assert macros, assert_{type}_equal()
+ * and assert_{type}_not_equal(), display the data that caused the assertion
+ * failure which increases data visibility aiding debugging of failing test
+ * cases.
+ *
+ * @{
+ */
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the given expression is true.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if expression is false (i.e., compares equal to
+ * zero).
+ *
+ * @param[in]  expression  The expression to evaluate.
+ *
+ * @see assert_int_equal()
+ * @see assert_string_equal()
+ */
+void assert_true(scalar expression);
+#else
+#define assert_true(c) _assert_true(cast_to_largest_integral_type(c), #c, \
+                                    __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the given expression is false.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if expression is true.
+ *
+ * @param[in]  expression  The expression to evaluate.
+ *
+ * @see assert_int_equal()
+ * @see assert_string_equal()
+ */
+void assert_false(scalar expression);
+#else
+#define assert_false(c) _assert_true(!(cast_to_largest_integral_type(c)), #c, \
+                                     __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the return_code is greater than or equal to 0.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the return code is smaller than 0. If the function
+ * you check sets an errno if it fails you can pass it to the function and
+ * it will be printed as part of the error message.
+ *
+ * @param[in]  rc       The return code to evaluate.
+ *
+ * @param[in]  error    Pass errno here or 0.
+ */
+void assert_return_code(int rc, int error);
+#else
+#define assert_return_code(rc, error) \
+    _assert_return_code(cast_to_largest_integral_type(rc), \
+                        sizeof(rc), \
+                        cast_to_largest_integral_type(error), \
+                        #rc, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the given pointer is non-NULL.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the pointer is non-NULL.
+ *
+ * @param[in]  pointer  The pointer to evaluate.
+ *
+ * @see assert_null()
+ */
+void assert_non_null(void *pointer);
+#else
+#define assert_non_null(c) _assert_true(cast_ptr_to_largest_integral_type(c), #c, \
+                                        __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the given pointer is NULL.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the pointer is non-NULL.
+ *
+ * @param[in]  pointer  The pointer to evaluate.
+ *
+ * @see assert_non_null()
+ */
+void assert_null(void *pointer);
+#else
+#define assert_null(c) _assert_true(!(cast_ptr_to_largest_integral_type(c)), #c, \
+__FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given pointers are equal.
+ *
+ * The function prints an error message and terminates the test by calling
+ * fail() if the pointers are not equal.
+ *
+ * @param[in]  a        The first pointer to compare.
+ *
+ * @param[in]  b        The pointer to compare against the first one.
+ */
+void assert_ptr_equal(void *a, void *b);
+#else
+#define assert_ptr_equal(a, b) \
+    _assert_int_equal(cast_ptr_to_largest_integral_type(a), \
+                      cast_ptr_to_largest_integral_type(b), \
+                      __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given pointers are not equal.
+ *
+ * The function prints an error message and terminates the test by calling
+ * fail() if the pointers are equal.
+ *
+ * @param[in]  a        The first pointer to compare.
+ *
+ * @param[in]  b        The pointer to compare against the first one.
+ */
+void assert_ptr_not_equal(void *a, void *b);
+#else
+#define assert_ptr_not_equal(a, b) \
+    _assert_int_not_equal(cast_ptr_to_largest_integral_type(a), \
+                          cast_ptr_to_largest_integral_type(b), \
+                          __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given integers are equal.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the integers are not equal.
+ *
+ * @param[in]  a  The first integer to compare.
+ *
+ * @param[in]  b  The integer to compare against the first one.
+ */
+void assert_int_equal(int a, int b);
+#else
+#define assert_int_equal(a, b) \
+    _assert_int_equal(cast_to_largest_integral_type(a), \
+                      cast_to_largest_integral_type(b), \
+                      __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given integers are not equal.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the integers are equal.
+ *
+ * @param[in]  a  The first integer to compare.
+ *
+ * @param[in]  b  The integer to compare against the first one.
+ *
+ * @see assert_int_equal()
+ */
+void assert_int_not_equal(int a, int b);
+#else
+#define assert_int_not_equal(a, b) \
+    _assert_int_not_equal(cast_to_largest_integral_type(a), \
+                          cast_to_largest_integral_type(b), \
+                          __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given strings are equal.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the strings are not equal.
+ *
+ * @param[in]  a  The string to check.
+ *
+ * @param[in]  b  The other string to compare.
+ */
+void assert_string_equal(const char *a, const char *b);
+#else
+#define assert_string_equal(a, b) \
+    _assert_string_equal((const char*)(a), (const char*)(b), __FILE__, \
+                         __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given strings are not equal.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the strings are equal.
+ *
+ * @param[in]  a  The string to check.
+ *
+ * @param[in]  b  The other string to compare.
+ */
+void assert_string_not_equal(const char *a, const char *b);
+#else
+#define assert_string_not_equal(a, b) \
+    _assert_string_not_equal((const char*)(a), (const char*)(b), __FILE__, \
+                             __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given areas of memory are equal, otherwise fail.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the memory is not equal.
+ *
+ * @param[in]  a  The first memory area to compare
+ *                (interpreted as unsigned char).
+ *
+ * @param[in]  b  The second memory area to compare
+ *                (interpreted as unsigned char).
+ *
+ * @param[in]  size  The first n bytes of the memory areas to compare.
+ */
+void assert_memory_equal(const void *a, const void *b, size_t size);
+#else
+#define assert_memory_equal(a, b, size) \
+    _assert_memory_equal((const void*)(a), (const void*)(b), size, __FILE__, \
+                         __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the two given areas of memory are not equal.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if the memory is equal.
+ *
+ * @param[in]  a  The first memory area to compare
+ *                (interpreted as unsigned char).
+ *
+ * @param[in]  b  The second memory area to compare
+ *                (interpreted as unsigned char).
+ *
+ * @param[in]  size  The first n bytes of the memory areas to compare.
+ */
+void assert_memory_not_equal(const void *a, const void *b, size_t size);
+#else
+#define assert_memory_not_equal(a, b, size) \
+    _assert_memory_not_equal((const void*)(a), (const void*)(b), size, \
+                             __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the specified value is not smaller than the minimum
+ * and and not greater than the maximum.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if value is not in range.
+ *
+ * @param[in]  value  The value to check.
+ *
+ * @param[in]  minimum  The minimum value allowed.
+ *
+ * @param[in]  maximum  The maximum value allowed.
+ */
+void assert_in_range(LargestIntegralType value, LargestIntegralType minimum, LargestIntegralType maximum);
+#else
+#define assert_in_range(value, minimum, maximum) \
+    _assert_in_range( \
+        cast_to_largest_integral_type(value), \
+        cast_to_largest_integral_type(minimum), \
+        cast_to_largest_integral_type(maximum), __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the specified value is smaller than the minimum or
+ * greater than the maximum.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if value is in range.
+ *
+ * @param[in]  value  The value to check.
+ *
+ * @param[in]  minimum  The minimum value to compare.
+ *
+ * @param[in]  maximum  The maximum value to compare.
+ */
+void assert_not_in_range(LargestIntegralType value, LargestIntegralType minimum, LargestIntegralType maximum);
+#else
+#define assert_not_in_range(value, minimum, maximum) \
+    _assert_not_in_range( \
+        cast_to_largest_integral_type(value), \
+        cast_to_largest_integral_type(minimum), \
+        cast_to_largest_integral_type(maximum), __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the specified value is within a set.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if value is not within a set.
+ *
+ * @param[in]  value  The value to look up
+ *
+ * @param[in]  values[]  The array to check for the value.
+ *
+ * @param[in]  count  The size of the values array.
+ */
+void assert_in_set(LargestIntegralType value, LargestIntegralType values[], size_t count);
+#else
+#define assert_in_set(value, values, number_of_values) \
+    _assert_in_set(value, values, number_of_values, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Assert that the specified value is not within a set.
+ *
+ * The function prints an error message to standard error and terminates the
+ * test by calling fail() if value is within a set.
+ *
+ * @param[in]  value  The value to look up
+ *
+ * @param[in]  values[]  The array to check for the value.
+ *
+ * @param[in]  count  The size of the values array.
+ */
+void assert_not_in_set(LargestIntegralType value, LargestIntegralType values[], size_t count);
+#else
+#define assert_not_in_set(value, values, number_of_values) \
+    _assert_not_in_set(value, values, number_of_values, __FILE__, __LINE__)
+#endif
+
+/** @} */
+
+/**
+ * @defgroup cmocka_call_order Call Ordering
+ * @ingroup cmocka
+ *
+ * It is often beneficial to  make sure that functions are called in an
+ * order. This is independent of mock returns and parameter checking as both
+ * of the aforementioned do not check the order in which they are called from
+ * different functions.
+ *
+ * <ul>
+ * <li><strong>expect_function_call(function)</strong> - The
+ * expect_function_call() macro pushes an expectation onto the stack of
+ * expected calls.</li>
+ *
+ * <li><strong>function_called()</strong> - pops a value from the stack of
+ * expected calls. function_called() is invoked within the mock object
+ * that uses it.
+ * </ul>
+ *
+ * expect_function_call() and function_called() are intended to be used in
+ * pairs. Cmocka will fail a test if there are more or less expected calls
+ * created (e.g. expect_function_call()) than consumed with function_called().
+ * There are provisions such as ignore_function_calls() which allow this
+ * restriction to be circumvented in tests where mock calls for the code under
+ * test are not the focus of the test.
+ *
+ * The following example illustrates how a unit test instructs cmocka
+ * to expect a function_called() from a particular mock,
+ * <strong>chef_sing()</strong>:
+ *
+ * @code
+ * void chef_sing(void);
+ *
+ * void code_under_test()
+ * {
+ *   chef_sing();
+ * }
+ *
+ * void some_test(void **state)
+ * {
+ *     expect_function_call(chef_sing);
+ *     code_under_test();
+ * }
+ * @endcode
+ *
+ * The implementation of the mock then must check whether it was meant to
+ * be called by invoking <strong>function_called()</strong>:
+ *
+ * @code
+ * void chef_sing()
+ * {
+ *     function_called();
+ * }
+ * @endcode
+ *
+ * @{
+ */
+
+#ifdef DOXYGEN
+/**
+ * @brief Check that current mocked function is being called in the expected
+ *        order
+ *
+ * @see expect_function_call()
+ */
+void function_called(void);
+#else
+#define function_called() _function_called(__func__, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Store expected call(s) to a mock to be checked by function_called()
+ *        later.
+ *
+ * @param[in]  #function  The function which should should be called
+ *
+ * @param[in]  times number of times this mock must be called
+ *
+ * @see function_called()
+ */
+void expect_function_calls(#function, const int times);
+#else
+#define expect_function_calls(function, times) \
+    _expect_function_call(#function, __FILE__, __LINE__, times)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Store expected single call to a mock to be checked by
+ *        function_called() later.
+ *
+ * @param[in]  #function  The function which should should be called
+ *
+ * @see function_called()
+ */
+void expect_function_call(#function);
+#else
+#define expect_function_call(function) \
+    _expect_function_call(#function, __FILE__, __LINE__, 1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Expects function_called() from given mock at least once
+ *
+ * @param[in]  #function  The function which should should be called
+ *
+ * @see function_called()
+ */
+void expect_function_call_any(#function);
+#else
+#define expect_function_call_any(function) \
+    _expect_function_call(#function, __FILE__, __LINE__, -1)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Ignores function_called() invocations from given mock function.
+ *
+ * @param[in]  #function  The function which should should be called
+ *
+ * @see function_called()
+ */
+void ignore_function_calls(#function);
+#else
+#define ignore_function_calls(function) \
+    _expect_function_call(#function, __FILE__, __LINE__, -2)
+#endif
+
+/** @} */
+
+/**
+ * @defgroup cmocka_exec Running Tests
+ * @ingroup cmocka
+ *
+ * This is the way tests are executed with CMocka.
+ *
+ * The following example illustrates this macro's use with the unit_test macro.
+ *
+ * @code
+ * void Test0(void **state);
+ * void Test1(void **state);
+ *
+ * int main(void)
+ * {
+ *     const struct CMUnitTest tests[] = {
+ *         cmocka_unit_test(Test0),
+ *         cmocka_unit_test(Test1),
+ *     };
+ *
+ *     return cmocka_run_group_tests(tests, NULL, NULL);
+ * }
+ * @endcode
+ *
+ * @{
+ */
+
+#ifdef DOXYGEN
+/**
+ * @brief Forces the test to fail immediately and quit.
+ */
+void fail(void);
+#else
+#define fail() _fail(__FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Forces the test to not be executed, but marked as skipped
+ */
+void skip(void);
+#else
+#define skip() _skip(__FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Forces the test to fail immediately and quit, printing the reason.
+ *
+ * @code
+ * fail_msg("This is some error message for test");
+ * @endcode
+ *
+ * or
+ *
+ * @code
+ * char *error_msg = "This is some error message for test";
+ * fail_msg("%s", error_msg);
+ * @endcode
+ */
+void fail_msg(const char *msg, ...);
+#else
+#define fail_msg(msg, ...) do { \
+    print_error("ERROR: " msg "\n", ##__VA_ARGS__); \
+    fail(); \
+} while (0)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Generic method to run a single test.
+ *
+ * @deprecated This function was deprecated in favor of cmocka_run_group_tests
+ *
+ * @param[in]  #function The function to test.
+ *
+ * @return 0 on success, 1 if an error occured.
+ *
+ * @code
+ * // A test case that does nothing and succeeds.
+ * void null_test_success(void **state) {
+ * }
+ *
+ * int main(void) {
+ *      return run_test(null_test_success);
+ * }
+ * @endcode
+ */
+int run_test(#function);
+#else
+#define run_test(f) _run_test(#f, f, NULL, UNIT_TEST_FUNCTION_TYPE_TEST, NULL)
+#endif
+
+static inline void _unit_test_dummy(void **state) {
+    (void)state;
+}
+
+/** Initializes a UnitTest structure.
+ *
+ * @deprecated This function was deprecated in favor of cmocka_unit_test
+ */
+#define unit_test(f) { #f, f, UNIT_TEST_FUNCTION_TYPE_TEST }
+
+#define _unit_test_setup(test, setup) \
+    { #test "_" #setup, setup, UNIT_TEST_FUNCTION_TYPE_SETUP }
+
+/** Initializes a UnitTest structure with a setup function.
+ *
+ * @deprecated This function was deprecated in favor of cmocka_unit_test_setup
+ */
+#define unit_test_setup(test, setup) \
+    _unit_test_setup(test, setup), \
+    unit_test(test), \
+    _unit_test_teardown(test, _unit_test_dummy)
+
+#define _unit_test_teardown(test, teardown) \
+    { #test "_" #teardown, teardown, UNIT_TEST_FUNCTION_TYPE_TEARDOWN }
+
+/** Initializes a UnitTest structure with a teardown function.
+ *
+ * @deprecated This function was deprecated in favor of cmocka_unit_test_teardown
+ */
+#define unit_test_teardown(test, teardown) \
+    _unit_test_setup(test, _unit_test_dummy), \
+    unit_test(test), \
+    _unit_test_teardown(test, teardown)
+
+/** Initializes a UnitTest structure for a group setup function.
+ *
+ * @deprecated This function was deprecated in favor of cmocka_run_group_tests
+ */
+#define group_test_setup(setup) \
+    { "group_" #setup, setup, UNIT_TEST_FUNCTION_TYPE_GROUP_SETUP }
+
+/** Initializes a UnitTest structure for a group teardown function.
+ *
+ * @deprecated This function was deprecated in favor of cmocka_run_group_tests
+ */
+#define group_test_teardown(teardown) \
+    { "group_" #teardown, teardown, UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN }
+
+/**
+ * Initialize an array of UnitTest structures with a setup function for a test
+ * and a teardown function.  Either setup or teardown can be NULL.
+ *
+ * @deprecated This function was deprecated in favor of
+ * cmocka_unit_test_setup_teardown
+ */
+#define unit_test_setup_teardown(test, setup, teardown) \
+    _unit_test_setup(test, setup), \
+    unit_test(test), \
+    _unit_test_teardown(test, teardown)
+
+
+/** Initializes a CMUnitTest structure. */
+#define cmocka_unit_test(f) { #f, f, NULL, NULL, NULL }
+
+/** Initializes a CMUnitTest structure with a setup function. */
+#define cmocka_unit_test_setup(f, setup) { #f, f, setup, NULL, NULL }
+
+/** Initializes a CMUnitTest structure with a teardown function. */
+#define cmocka_unit_test_teardown(f, teardown) { #f, f, NULL, teardown, NULL }
+
+/**
+ * Initialize an array of CMUnitTest structures with a setup function for a test
+ * and a teardown function. Either setup or teardown can be NULL.
+ */
+#define cmocka_unit_test_setup_teardown(f, setup, teardown) { #f, f, setup, teardown, NULL }
+
+/**
+ * Initialize a CMUnitTest structure with given initial state. It will be passed
+ * to test function as an argument later. It can be used when test state does
+ * not need special initialization or was initialized already.
+ * @note If the group setup function initialized the state already, it won't be
+ * overridden by the initial state defined here.
+ */
+#define cmocka_unit_test_prestate(f, state) { #f, f, NULL, NULL, state }
+
+/**
+ * Initialize a CMUnitTest structure with given initial state, setup and
+ * teardown function. Any of these values can be NULL. Initial state is passed
+ * later to setup function, or directly to test if none was given.
+ * @note If the group setup function initialized the state already, it won't be
+ * overridden by the initial state defined here.
+ */
+#define cmocka_unit_test_prestate_setup_teardown(f, setup, teardown, state) { #f, f, setup, teardown, state }
+
+#define run_tests(tests) _run_tests(tests, sizeof(tests) / sizeof(tests)[0])
+#define run_group_tests(tests) _run_group_tests(tests, sizeof(tests) / sizeof(tests)[0])
+
+#ifdef DOXYGEN
+/**
+ * @brief Run tests specified by an array of CMUnitTest structures.
+ *
+ * @param[in]  group_tests[]  The array of unit tests to execute.
+ *
+ * @param[in]  group_setup    The setup function which should be called before
+ *                            all unit tests are executed.
+ *
+ * @param[in]  group_teardown The teardown function to be called after all
+ *                            tests have finished.
+ *
+ * @return 0 on success, or the number of failed tests.
+ *
+ * @code
+ * static int setup(void **state) {
+ *      int *answer = malloc(sizeof(int));
+ *      if (*answer == NULL) {
+ *          return -1;
+ *      }
+ *      *answer = 42;
+ *
+ *      *state = answer;
+ *
+ *      return 0;
+ * }
+ *
+ * static int teardown(void **state) {
+ *      free(*state);
+ *
+ *      return 0;
+ * }
+ *
+ * static void null_test_success(void **state) {
+ *     (void) state;
+ * }
+ *
+ * static void int_test_success(void **state) {
+ *      int *answer = *state;
+ *      assert_int_equal(*answer, 42);
+ * }
+ *
+ * int main(void) {
+ *     const struct CMUnitTest tests[] = {
+ *         cmocka_unit_test(null_test_success),
+ *         cmocka_unit_test_setup_teardown(int_test_success, setup, teardown),
+ *     };
+ *
+ *     return cmocka_run_group_tests(tests, NULL, NULL);
+ * }
+ * @endcode
+ *
+ * @see cmocka_unit_test
+ * @see cmocka_unit_test_setup
+ * @see cmocka_unit_test_teardown
+ * @see cmocka_unit_test_setup_teardown
+ */
+int cmocka_run_group_tests(const struct CMUnitTest group_tests[],
+                           CMFixtureFunction group_setup,
+                           CMFixtureFunction group_teardown);
+#else
+# define cmocka_run_group_tests(group_tests, group_setup, group_teardown) \
+        _cmocka_run_group_tests(#group_tests, group_tests, sizeof(group_tests) / sizeof(group_tests)[0], group_setup, group_teardown)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Run tests specified by an array of CMUnitTest structures and specify
+ *        a name.
+ *
+ * @param[in]  group_name     The name of the group test.
+ *
+ * @param[in]  group_tests[]  The array of unit tests to execute.
+ *
+ * @param[in]  group_setup    The setup function which should be called before
+ *                            all unit tests are executed.
+ *
+ * @param[in]  group_teardown The teardown function to be called after all
+ *                            tests have finished.
+ *
+ * @return 0 on success, or the number of failed tests.
+ *
+ * @code
+ * static int setup(void **state) {
+ *      int *answer = malloc(sizeof(int));
+ *      if (*answer == NULL) {
+ *          return -1;
+ *      }
+ *      *answer = 42;
+ *
+ *      *state = answer;
+ *
+ *      return 0;
+ * }
+ *
+ * static int teardown(void **state) {
+ *      free(*state);
+ *
+ *      return 0;
+ * }
+ *
+ * static void null_test_success(void **state) {
+ *     (void) state;
+ * }
+ *
+ * static void int_test_success(void **state) {
+ *      int *answer = *state;
+ *      assert_int_equal(*answer, 42);
+ * }
+ *
+ * int main(void) {
+ *     const struct CMUnitTest tests[] = {
+ *         cmocka_unit_test(null_test_success),
+ *         cmocka_unit_test_setup_teardown(int_test_success, setup, teardown),
+ *     };
+ *
+ *     return cmocka_run_group_tests_name("success_test", tests, NULL, NULL);
+ * }
+ * @endcode
+ *
+ * @see cmocka_unit_test
+ * @see cmocka_unit_test_setup
+ * @see cmocka_unit_test_teardown
+ * @see cmocka_unit_test_setup_teardown
+ */
+int cmocka_run_group_tests_name(const char *group_name,
+                                const struct CMUnitTest group_tests[],
+                                CMFixtureFunction group_setup,
+                                CMFixtureFunction group_teardown);
+#else
+# define cmocka_run_group_tests_name(group_name, group_tests, group_setup, group_teardown) \
+        _cmocka_run_group_tests(group_name, group_tests, sizeof(group_tests) / sizeof(group_tests)[0], group_setup, group_teardown)
+#endif
+
+/** @} */
+
+/**
+ * @defgroup cmocka_alloc Dynamic Memory Allocation
+ * @ingroup cmocka
+ *
+ * Memory leaks, buffer overflows and underflows can be checked using cmocka.
+ *
+ * To test for memory leaks, buffer overflows and underflows a module being
+ * tested by cmocka should replace calls to malloc(), calloc() and free() to
+ * test_malloc(), test_calloc() and test_free() respectively. Each time a block
+ * is deallocated using test_free() it is checked for corruption, if a corrupt
+ * block is found a test failure is signalled. All blocks allocated using the
+ * test_*() allocation functions are tracked by the cmocka library. When a test
+ * completes if any allocated blocks (memory leaks) remain they are reported
+ * and a test failure is signalled.
+ *
+ * For simplicity cmocka currently executes all tests in one process. Therefore
+ * all test cases in a test application share a single address space which
+ * means memory corruption from a single test case could potentially cause the
+ * test application to exit prematurely.
+ *
+ * @{
+ */
+
+#ifdef DOXYGEN
+/**
+ * @brief Test function overriding malloc.
+ *
+ * @param[in]  size  The bytes which should be allocated.
+ *
+ * @return A pointer to the allocated memory or NULL on error.
+ *
+ * @code
+ * #ifdef UNIT_TESTING
+ * extern void* _test_malloc(const size_t size, const char* file, const int line);
+ *
+ * #define malloc(size) _test_malloc(size, __FILE__, __LINE__)
+ * #endif
+ *
+ * void leak_memory() {
+ *     int * const temporary = (int*)malloc(sizeof(int));
+ *     *temporary = 0;
+ * }
+ * @endcode
+ *
+ * @see malloc(3)
+ */
+void *test_malloc(size_t size);
+#else
+#define test_malloc(size) _test_malloc(size, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Test function overriding calloc.
+ *
+ * The memory is set to zero.
+ *
+ * @param[in]  nmemb  The number of elements for an array to be allocated.
+ *
+ * @param[in]  size   The size in bytes of each array element to allocate.
+ *
+ * @return A pointer to the allocated memory, NULL on error.
+ *
+ * @see calloc(3)
+ */
+void *test_calloc(size_t nmemb, size_t size);
+#else
+#define test_calloc(num, size) _test_calloc(num, size, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Test function overriding realloc which detects buffer overruns
+ *        and memoery leaks.
+ *
+ * @param[in]  ptr   The memory block which should be changed.
+ *
+ * @param[in]  size  The bytes which should be allocated.
+ *
+ * @return           The newly allocated memory block, NULL on error.
+ */
+void *test_realloc(void *ptr, size_t size);
+#else
+#define test_realloc(ptr, size) _test_realloc(ptr, size, __FILE__, __LINE__)
+#endif
+
+#ifdef DOXYGEN
+/**
+ * @brief Test function overriding free(3).
+ *
+ * @param[in]  ptr  The pointer to the memory space to free.
+ *
+ * @see free(3).
+ */
+void test_free(void *ptr);
+#else
+#define test_free(ptr) _test_free(ptr, __FILE__, __LINE__)
+#endif
+
+/* Redirect malloc, calloc and free to the unit test allocators. */
+#ifdef UNIT_TESTING
+#define malloc test_malloc
+#define realloc test_realloc
+#define calloc test_calloc
+#define free test_free
+#endif /* UNIT_TESTING */
+
+/** @} */
+
+
+/**
+ * @defgroup cmocka_mock_assert Standard Assertions
+ * @ingroup cmocka
+ *
+ * How to handle assert(3) of the standard C library.
+ *
+ * Runtime assert macros like the standard C library's assert() should be
+ * redefined in modules being tested to use cmocka's mock_assert() function.
+ * Normally mock_assert() signals a test failure. If a function is called using
+ * the expect_assert_failure() macro, any calls to mock_assert() within the
+ * function will result in the execution of the test. If no calls to
+ * mock_assert() occur during the function called via expect_assert_failure() a
+ * test failure is signalled.
+ *
+ * @{
+ */
+
+/**
+ * @brief Function to replace assert(3) in tested code.
+ *
+ * In conjuction with check_assert() it's possible to determine whether an
+ * assert condition has failed without stopping a test.
+ *
+ * @param[in]  result  The expression to assert.
+ *
+ * @param[in]  expression  The expression as string.
+ *
+ * @param[in]  file  The file mock_assert() is called.
+ *
+ * @param[in]  line  The line mock_assert() is called.
+ *
+ * @code
+ * #ifdef UNIT_TESTING
+ * extern void mock_assert(const int result, const char* const expression,
+ *                         const char * const file, const int line);
+ *
+ * #undef assert
+ * #define assert(expression) \
+ *     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+ * #endif
+ *
+ * void increment_value(int * const value) {
+ *     assert(value);
+ *     (*value) ++;
+ * }
+ * @endcode
+ *
+ * @see assert(3)
+ * @see expect_assert_failure
+ */
+void mock_assert(const int result, const char* const expression,
+                 const char * const file, const int line);
+
+#ifdef DOXYGEN
+/**
+ * @brief Ensure that mock_assert() is called.
+ *
+ * If mock_assert() is called the assert expression string is returned.
+ *
+ * @param[in]  fn_call  The function will will call mock_assert().
+ *
+ * @code
+ * #define assert mock_assert
+ *
+ * void showmessage(const char *message) {
+ *   assert(message);
+ * }
+ *
+ * int main(int argc, const char* argv[]) {
+ *   expect_assert_failure(show_message(NULL));
+ *   printf("succeeded\n");
+ *   return 0;
+ * }
+ * @endcode
+ *
+ */
+void expect_assert_failure(function fn_call);
+#else
+#define expect_assert_failure(function_call) \
+  { \
+    const int result = setjmp(global_expect_assert_env); \
+    global_expecting_assert = 1; \
+    if (result) { \
+      print_message("Expected assertion %s occurred\n", \
+                    global_last_failed_assert); \
+      global_expecting_assert = 0; \
+    } else { \
+      function_call ; \
+      global_expecting_assert = 0; \
+      print_error("Expected assert in %s\n", #function_call); \
+      _fail(__FILE__, __LINE__); \
+    } \
+  }
+#endif
+
+/** @} */
+
+/* Function prototype for setup, test and teardown functions. */
+typedef void (*UnitTestFunction)(void **state);
+
+/* Function that determines whether a function parameter value is correct. */
+typedef int (*CheckParameterValue)(const LargestIntegralType value,
+                                   const LargestIntegralType check_value_data);
+
+/* Type of the unit test function. */
+typedef enum UnitTestFunctionType {
+    UNIT_TEST_FUNCTION_TYPE_TEST = 0,
+    UNIT_TEST_FUNCTION_TYPE_SETUP,
+    UNIT_TEST_FUNCTION_TYPE_TEARDOWN,
+    UNIT_TEST_FUNCTION_TYPE_GROUP_SETUP,
+    UNIT_TEST_FUNCTION_TYPE_GROUP_TEARDOWN,
+} UnitTestFunctionType;
+
+/*
+ * Stores a unit test function with its name and type.
+ * NOTE: Every setup function must be paired with a teardown function.  It's
+ * possible to specify NULL function pointers.
+ */
+typedef struct UnitTest {
+    const char* name;
+    UnitTestFunction function;
+    UnitTestFunctionType function_type;
+} UnitTest;
+
+typedef struct GroupTest {
+    UnitTestFunction setup;
+    UnitTestFunction teardown;
+    const UnitTest *tests;
+    const size_t number_of_tests;
+} GroupTest;
+
+/* Function prototype for test functions. */
+typedef void (*CMUnitTestFunction)(void **state);
+
+/* Function prototype for setup and teardown functions. */
+typedef int (*CMFixtureFunction)(void **state);
+
+struct CMUnitTest {
+    const char *name;
+    CMUnitTestFunction test_func;
+    CMFixtureFunction setup_func;
+    CMFixtureFunction teardown_func;
+    void *initial_state;
+};
+
+/* Location within some source code. */
+typedef struct SourceLocation {
+    const char* file;
+    int line;
+} SourceLocation;
+
+/* Event that's called to check a parameter value. */
+typedef struct CheckParameterEvent {
+    SourceLocation location;
+    const char *parameter_name;
+    CheckParameterValue check_value;
+    LargestIntegralType check_value_data;
+} CheckParameterEvent;
+
+/* Used by expect_assert_failure() and mock_assert(). */
+extern int global_expecting_assert;
+//extern jmp_buf global_expect_assert_env;
+extern const char * global_last_failed_assert;
+
+/* Retrieves a value for the given function, as set by "will_return". */
+LargestIntegralType _mock(const char * const function, const char* const file,
+                          const int line);
+
+void _expect_function_call(
+    const char * const function_name,
+    const char * const file,
+    const int line,
+    const int count);
+
+void _function_called(const char * const function, const char* const file,
+                          const int line);
+
+void _expect_check(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line,
+    const CheckParameterValue check_function,
+    const LargestIntegralType check_data, CheckParameterEvent * const event,
+    const int count);
+
+void _expect_in_set(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const LargestIntegralType values[],
+    const size_t number_of_values, const int count);
+void _expect_not_in_set(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const LargestIntegralType values[],
+    const size_t number_of_values, const int count);
+
+void _expect_in_range(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line,
+    const LargestIntegralType minimum,
+    const LargestIntegralType maximum, const int count);
+void _expect_not_in_range(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line,
+    const LargestIntegralType minimum,
+    const LargestIntegralType maximum, const int count);
+
+void _expect_value(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const LargestIntegralType value,
+    const int count);
+void _expect_not_value(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const LargestIntegralType value,
+    const int count);
+
+void _expect_string(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const char* string,
+    const int count);
+void _expect_not_string(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const char* string,
+    const int count);
+
+void _expect_memory(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const void* const memory,
+    const size_t size, const int count);
+void _expect_not_memory(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const void* const memory,
+    const size_t size, const int count);
+
+void _expect_any(
+    const char* const function, const char* const parameter,
+    const char* const file, const int line, const int count);
+
+void _check_expected(
+    const char * const function_name, const char * const parameter_name,
+    const char* file, const int line, const LargestIntegralType value);
+
+void _will_return(const char * const function_name, const char * const file,
+                  const int line, const LargestIntegralType value,
+                  const int count);
+void _assert_true(const LargestIntegralType result,
+                  const char* const expression,
+                  const char * const file, const int line);
+void _assert_return_code(const LargestIntegralType result,
+                         size_t rlen,
+                         const LargestIntegralType error,
+                         const char * const expression,
+                         const char * const file,
+                         const int line);
+void _assert_int_equal(
+    const LargestIntegralType a, const LargestIntegralType b,
+    const char * const file, const int line);
+void _assert_int_not_equal(
+    const LargestIntegralType a, const LargestIntegralType b,
+    const char * const file, const int line);
+void _assert_string_equal(const char * const a, const char * const b,
+                          const char * const file, const int line);
+void _assert_string_not_equal(const char * const a, const char * const b,
+                              const char *file, const int line);
+void _assert_memory_equal(const void * const a, const void * const b,
+                          const size_t size, const char* const file,
+                          const int line);
+void _assert_memory_not_equal(const void * const a, const void * const b,
+                              const size_t size, const char* const file,
+                              const int line);
+void _assert_in_range(
+    const LargestIntegralType value, const LargestIntegralType minimum,
+    const LargestIntegralType maximum, const char* const file, const int line);
+void _assert_not_in_range(
+    const LargestIntegralType value, const LargestIntegralType minimum,
+    const LargestIntegralType maximum, const char* const file, const int line);
+void _assert_in_set(
+    const LargestIntegralType value, const LargestIntegralType values[],
+    const size_t number_of_values, const char* const file, const int line);
+void _assert_not_in_set(
+    const LargestIntegralType value, const LargestIntegralType values[],
+    const size_t number_of_values, const char* const file, const int line);
+
+void* _test_malloc(const size_t size, const char* file, const int line);
+void* _test_realloc(void *ptr, const size_t size, const char* file, const int line);
+void* _test_calloc(const size_t number_of_elements, const size_t size,
+                   const char* file, const int line);
+void _test_free(void* const ptr, const char* file, const int line);
+
+void _fail(const char * const file, const int line);
+
+void _skip(const char * const file, const int line);
+
+int _run_test(
+    const char * const function_name, const UnitTestFunction Function,
+    void ** const volatile state, const UnitTestFunctionType function_type,
+    const void* const heap_check_point);
+CMOCKA_DEPRECATED int _run_tests(const UnitTest * const tests,
+                                 const size_t number_of_tests);
+CMOCKA_DEPRECATED int _run_group_tests(const UnitTest * const tests,
+                                       const size_t number_of_tests);
+
+/* Test runner */
+int _cmocka_run_group_tests(const char *group_name,
+                            const struct CMUnitTest * const tests,
+                            const size_t num_tests,
+                            CMFixtureFunction group_setup,
+                            CMFixtureFunction group_teardown);
+
+/* Standard output and error print methods. */
+void print_message(const char* const format, ...) CMOCKA_PRINTF_ATTRIBUTE(1, 2);
+void print_error(const char* const format, ...) CMOCKA_PRINTF_ATTRIBUTE(1, 2);
+void vprint_message(const char* const format, va_list args) CMOCKA_PRINTF_ATTRIBUTE(1, 0);
+void vprint_error(const char* const format, va_list args) CMOCKA_PRINTF_ATTRIBUTE(1, 0);
+
+enum cm_message_output {
+    CM_OUTPUT_STDOUT,
+    CM_OUTPUT_SUBUNIT,
+    CM_OUTPUT_TAP,
+    CM_OUTPUT_XML,
+};
+
+/**
+ * @brief Function to set the output format for a test.
+ *
+ * The ouput format for the test can either be set globally using this
+ * function or overriden with environment variable CMOCKA_MESSAGE_OUTPUT.
+ *
+ * The environment variable can be set to either STDOUT, SUBUNIT, TAP or XML.
+ *
+ * @param[in] output    The output format to use for the test.
+ *
+ */
+void cmocka_set_message_output(enum cm_message_output output);
+
+/** @} */
+
+#endif /* CMOCKA_H_ */
+/**
+ * @file i2c_wrapper.h
+ * @brief An abtraction for i2c wrapper function
+ *
+ * This header file provides the prototypes of the function for
+ * various i2c operations using mraa/i2c library.
+ *
+ * @author Vipul Gupta
+ * @date 09 March 2018
+ *
+ */
+
+#ifndef __I2C_WRAPPER_H__
+#define __I2C_WRAPPER_H__
+
+/* Include files */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+
+/* mraa header */
+#include <mraa/i2c.h>
+
+
+#define I2C_BUS	(2)
+
+/**
+ * @brief Writes a byte of data using i2c
+ *
+ * Given the device address, register address and the data,
+ * it will write the byte of data to the register specified.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Data byte to be written
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
+								const uint8_t data);
+/**
+ * @brief Writes a word length of data using i2c
+ *
+ * Given the device address, register address and the data,
+ * it will write the word length of data to the register specified.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Data byte to be written
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_write_word(uint8_t address, const uint8_t cmd, 
+								const uint16_t data);
+/**
+ * @brief Reads a byte of data using i2c
+ *
+ * Given the device address, register address and data pointer,
+ * it will read the byte of data from the register specified and
+ * write it to the data variable.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Dat pointer
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_read_byte(uint8_t address, const uint8_t cmd, 
+								uint8_t * data);
+/**
+ * @brief Reads a series of data using i2c
+ *
+ * Given the device address, register address , data pointer and length,
+ * it will read the length of bytes of data from the register specified 
+ * and write it to the data buffer.
+ *
+ * @param address Device slave address
+ * @param cmd Register address
+ * @param data Dat pointer
+ *
+ * @return Error code (0 Success)
+ */
+int8_t i2c_read_bytes(uint8_t address, const uint8_t cmd, 
+								uint8_t * data, int length);
+
+/* Exit routine */
+static int8_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status);
+
+
+#endif	/* __I2C_WRAPPER_H__ *//**
+ * @file led_task.h
+ * @brief An abtraction for USR LED switching functions
+ *
+ * This header file provides the prototypes of the function for
+ * switching USR LED0 on Beaglebone Green.
+ *
+ * @author Vipul Gupta
+ * @date 17 March 2018
+ *
+ */
+
+#ifndef __LED_H__
+#define __LED_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+/* Blue USR LED0 but green name! */
+#define LED0_PATH "/sys/class/leds/beaglebone:green:usr0/brightness"
+
+#define LED0_INITPATH "/sys/class/leds/beaglebone:green:usr0/trigger"
+
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+
+/**
+ * @brief Turns on USR LED0
+ *
+ * It turns OFF the USR LED0 on Beaglebone Green.
+ *
+ */
+void LED_ON(void);
+
+/**
+ * @brief Turns off USR LED0
+ *
+ * It turns OFF the USR LED0 on Beaglebone Green.
+ *
+ */
+void LED_OFF(void);
+
+/**
+ * @brief Turns off USR LED0
+ *
+ * It turns OFF the USR LED0 on Beaglebone Green.
+ *
+ */
+void LED_INIT(void);
+
+#endif	/* __LIGHT_TASK_H__ */
+/**
+* @file my_time.h
+* @brief This file contains timer functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 16 2018
+*
+*/
+ 
+#ifndef TIME_H
+#define TIME_H
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+/******************************************************************//****
+ * @brief get_time_string()
+ * This function gets the current time and converts into a string to be 
+ * printed in logger message 
+ * @timestring: Pointer to buffer to store the time as a string
+ * @len       : length of buffer
+ * @return: status(SUCCESS/FAILURE)
+ ***********************************************************************/
+int get_time_string(char *timeString, int len);
+
+#endif
+/**
+* @file logger_task.h
+* @brief This file contains logger task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __LOGGER_H__
+#define __LOGGER_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <errno.h>
+#include <mqueue.h>
+#include <sys/mman.h>
+#include "main_task.h"
+#include "my_time.h"
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+/* message size */
+#define LT_MSG_SIZE       32
+/* logger message queue name */
+#define LOGTASK_MQ_NAME   "/logTask_mq"
+/* logger file name */
+#define LOGFILE_NAME      "/my_log.txt"
+/* shared memory name and size */
+#define LOGTASK_SM_NAME	   "logTask_sharedMemory"
+#define SM_SIZE     sizeof(Task_Status_t)
+
+/* Log level  type*/
+typedef enum
+{
+  LOG_ERR,
+  LOG_STATUS,
+  LOG_INFO,
+  LOG_ALL
+}Log_Level_t;
+
+/* logger message structure*/
+typedef struct
+{
+   char             time_stamp[20];
+   Log_Level_t      log_level;
+   Task_Id_t        source_ID;
+   char             lmq_data[LT_MSG_SIZE];
+}logTask_Msg_t;
+
+
+/******************************************************************//**********
+ * @brief prints messages to standard output(screen).
+ *****************************************************************************/
+#define   LOG_STD(format, ...)    \
+          printf("[PID:%d] [TID:%ld]",getpid(), syscall(SYS_gettid)); \
+          printf(format, ##__VA_ARGS__)
+
+/******************************************************************//**********
+ * @brief enters message queue data into log file.
+ *****************************************************************************/
+#define   LOG_TO_FILE(mq_data)  \
+          char buf[200]; \
+          log_fp=fopen("my_log.txt", "a"); \
+          snprintf( buf, sizeof(buf), "[PID:%d] [TID:%ld] time_stamp:%s log_level:%s" \
+                        " source_ID:%s lmq_data:%s\n", getpid(), syscall(SYS_gettid), \
+                    mq_data.time_stamp, logLevel_nameString[mq_data.log_level], \
+                    taskId_nameString[mq_data.source_ID], mq_data.lmq_data ); \
+          fprintf(log_fp, buf); \
+          fclose(log_fp);          
+  
+/******************************************************************//**********
+ * @brief enters data into logger message queue.
+ *****************************************************************************/
+#define LOG_TO_QUEUE(name,logLevel,sourceId,format, ...) \
+    name.log_level= logLevel; \
+    name.source_ID= sourceId; \
+    set_Log_currentTimestamp(&name);  \
+    snprintf(name.lmq_data,sizeof(name.lmq_data),format, ##__VA_ARGS__); \
+    write_message_LogQueue(logTask_mq_d,&name,sizeof(name)); 
+
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+extern const char* taskId_nameString[MAIN_TASK_ID+1];
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+
+void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
+                                                                 size_t log_struct_size);
+
+/******************************************************************//**********
+ * @brief set_Log_currentTimestamp()
+ * This function gets current timestamp and converts it into string.
+ *****************************************************************************/
+static inline void set_Log_currentTimestamp(logTask_Msg_t *log_msg)   
+{
+    get_time_string(log_msg->time_stamp,sizeof(log_msg->time_stamp));
+}
+
+#endif /* __LOGGER_H__ */
+/**
+* @file light_task.h
+* @brief This file contains light task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __LIGHT_TASK_H__
+#define __LIGHT_TASK_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include "i2c_wrapper.h"
+#include "main_task.h"
+#include <math.h>
+#include <pthread.h>
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+/* shared memory name and size */
+#define LIGHTTASK_SM_NAME	   "lightTask_sharedMemory"
+
+/* Macro definitions */
+#define APDS_SENS_DEV_ADDR  0x39
+
+#define APDS_CMD_BYTE_REG   0x80
+#define APDS_CMD_WORD_REG   0xA0
+
+
+#define APDS_CONTROL_REG    0x00
+#define APDS_TIMING_REG		0x01
+#define APDS_INTTHLOW_REG	0x02
+#define APDS_INTTHHIGH_REG	0x04
+#define APDS_INTCTRL_REG	0x06
+#define APDS_ID_REG         0x0A
+#define APDS_D0LOW_REG      0x0C
+#define APDS_D1LOW_REG      0x0E
+
+#define POWER_ON			0x03
+#define POWER_OFF			0x00
+#define	INT_TIME_00			0x00	/* 13.7 ms */
+#define	INT_TIME_01			0x01	/* 101 ms */
+#define	INT_TIME_02			0x02	/* 402 ms (default) */
+#define LOW_GAIN			(0<<4)
+#define HIGH_GAIN			(1<<4)
+#define INTR_ON				(1<<4)
+#define INTR_OFF			(0<<4)
+
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief write_control_reg()
+ * This function writes sensor control register with data,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_control_reg(const uint8_t data);
+
+/******************************************************************//**********
+ * @brief read_control_reg()
+ * This function reads sensor control register,
+ * @data: pointer to store read data
+ *****************************************************************************/
+int8_t read_control_reg(uint8_t * data);
+
+/******************************************************************//**********
+ * @brief write_timing_reg()
+ * This function writes to timing register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_timing_reg(const uint8_t data);
+
+/******************************************************************//**********
+ * @brief read_timing_reg()
+ * This function reads timing register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_timing_reg(uint8_t * data);
+
+/******************************************************************//**********
+ * @brief write_intthresh_low_reg()
+ * This function writes to intthreshold low register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_intthresh_low_reg(const uint16_t data);
+
+/******************************************************************//**********
+ * @brief read_intthresh_low_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to stor ethe read data
+ *****************************************************************************/
+int8_t read_intthresh_low_reg(uint16_t * data);
+
+/******************************************************************//**********
+ * @brief write_intthresh_high_reg()
+ * This function writes to inthreshold register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_intthresh_high_reg(const uint16_t data);
+
+/******************************************************************//**********
+ * @brief read_intthresh_high_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_intthresh_high_reg(uint8_t * data);
+
+/******************************************************************//**********
+ * @brief write_intcontrol_reg()
+ * This function writes to intcontrol register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_intcontrol_reg(const uint8_t data);
+
+/******************************************************************//**********
+ * @brief read_intcontrol_reg()
+ * This function reads intcontrol register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_intcontrol_reg(uint8_t * data);
+
+/******************************************************************//**********
+ * @brief read_id_reg()
+ * This function reads id register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_id_reg(uint8_t * data);
+
+/******************************************************************//**********
+ * @brief read_sensor_lux()
+ * This function reads the sensor lux,
+ * @data: pointer to strore the read data
+ *****************************************************************************/
+int8_t read_sensor_lux(float * data);
+
+/******************************************************************//**********
+ * @brief light_start_test()
+ * This function checks the ID register and return 0 on success and -1 
+ * failure.
+ *****************************************************************************/
+int light_start_test(void);
+
+int sensor_lux_req(API_message_t * ptr);
+
+/******************************************************************//**********
+ * @brief light_task_thread()
+ * This thread initializes the light task resources such as shared memory
+ *****************************************************************************/
+void light_task_thread(void);
+
+#endif
+
+/**
+* @file main_task.h
+* @brief This file contains main task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __MAIN_TASK_H__
+#define __MAIN_TASK_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <semaphore.h>
+
+//***********************************************************************************
+// Defined Macros and Types
+//***********************************************************************************
+/* Macro to denote the number of threads */
+#define NUM_THREADS     5
+
+/* status macros */
+#define SUCCESS        0
+#define ERROR         -1
+
+#define SEM_START	"/sem-start"
+
+/* task ID type */
+typedef enum
+{
+  LOGGER_TASK_ID,
+  TEMP_TASK_ID,
+  LIGHT_TASK_ID,
+  SOCKET_TASK_ID,  
+  //GPIO_TASK_ID,
+  MAIN_TASK_ID
+}Task_Id_t;
+
+/* task status type*/
+typedef enum
+{
+  DEAD=0,
+  ALIVE
+}Task_Status_t;
+
+typedef struct api_message
+{
+	char task_name[20];
+	float value;
+	char msg[20]; 
+}API_message_t;
+
+//***********************************************************************************
+// Global Variables
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+
+void signal_handler(int signal);
+
+/******************************************************************//**********
+ * @brief main()
+ * This function creates creates multiple threads such as logger_task, 
+ * temperature_task, light_task, socket_task & status read and 
+ * waits for its completion
+ *****************************************************************************/
+int main( int argc, char** argv );
+
+
+#endif /* __MAIN_TASK_H__ */
+/**
+* @file logger_task.h
+* @brief This file contains logger task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __SOCKET_TASK_H__
+#define __SOCKET_TASK_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <string.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
+#include <pthread.h>
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+#define PORT_ADR    2000
+/* shared memory name and size */
+#define SOCKETTASK_SM_NAME	   "socketTask_sharedMemory"
+
+#define NIGHT_DAY_TH	(15.0)
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+
+/******************************************************************//**********
+ * @brief set_Log_currentTimestamp()
+ * This function gets current timestamp and converts it into string.
+ *****************************************************************************/
+/******************************************************************//**********
+ * @brief socket_task_thread()
+ * This thread initializes socket connection
+ *****************************************************************************/
+void socket_task_thread(void);
+
+#endif
+/**
+* @file temp_task.h
+* @brief This file contains temperature task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Vipul Gupta
+* @date March 14 2018
+*
+*/
+#ifndef __TEMP_TASK_H__
+#define __TEMP_TASK_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include "i2c_wrapper.h"
+#include "main_task.h"
+#include <pthread.h>
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+/* shared memory name and size */
+#define TEMPTASK_SM_NAME	   "tempTask_sharedMemory"
+
+#define TMP102_DEV_ADDR		0x48
+
+#define TMP102_TEMP_REG		0x00
+#define TMP102_CONF_REG		0x01
+#define TMP102_TLOW_REG		0x02
+#define TMP102_THIGH_REG	0x03
+
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief read_temp_celsius()
+ * This function reads temperature in celcius
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_temp_celsius(float * data);
+
+/******************************************************************//**********
+ * @brief read_temp_fahrenheit()
+ * This function reads temperature in farenheit
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_temp_fahrenheit(float * data);
+
+/******************************************************************//**********
+ * @brief read_temp_kelvin()
+ * This function reads temperature in kelvins
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_temp_kelvin(float * data);
+
+/******************************************************************//**********
+ * @brief write_config_reg()
+ * This function writes configuration register
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_config_reg(const uint16_t data);
+
+/******************************************************************//**********
+ * @brief read_config_reg()
+ * This function reads configuration register
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_config_reg(uint16_t * data);
+
+/******************************************************************//**********
+ * @brief read_tlow_celsius()
+ * This function reads tlow
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_tlow_celsius(float * data);
+
+/******************************************************************//**********
+ * @brief read_thigh_celsius()
+ * This function reads thigh
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_thigh_celsius(float * data);
+
+/******************************************************************//**********
+ * @brief temp_start_test()
+ * This function checks the Config register default value and return 0
+ * on success and -1 on failure.
+ *****************************************************************************/
+int temp_start_test(void);
+
+int get_temp_cel(API_message_t * ptr);
+
+int get_temp_kel(API_message_t * ptr);
+
+int get_temp_fah(API_message_t * ptr);
+
+/******************************************************************//**********
+ * @brief temperature_task_thread()
+ * This thread initializes the temperature task resources such as shared memory
+ *****************************************************************************/
+void temperature_task_thread(void);
+
+#endif
+/**
+ * @file i2c_wrapper.c
+ * @brief The implementation file for i2c wrapper functions
+ *
+ * This implementation file provides the function definitions for
+ * various i2c wrapper operations.
+ *
+ * @author Vipul Gupta
+ * @date 09 March 2018
+ *
+ */
+
+#include "i2c_wrapper.h"
+
+
+int8_t i2c_write_byte(uint8_t address, const uint8_t cmd, 
+								const uint8_t data)
+{
+	mraa_result_t status = MRAA_SUCCESS;
+    mraa_i2c_context i2c;
+
+
+    i2c = mraa_i2c_init_raw(I2C_BUS);
+    if (i2c == NULL) 
+    {
+        fprintf(stderr, "Failed to initialize I2C\n");
+   
+        return EXIT_FAILURE;
+    }
+
+    /* set slave address */
+    status = mraa_i2c_address(i2c, address);
+    if (status != MRAA_SUCCESS)
+    	return i2c_exit(i2c, status);
+
+    status = mraa_i2c_write_byte_data(i2c, data, cmd);
+    if (status != MRAA_SUCCESS)
+    	return i2c_exit(i2c, status);
+
+    /* stop i2c */
+    mraa_i2c_stop(i2c);
+
+    /* deinitialize mraa for the platform  */
+
+    return EXIT_SUCCESS;
+
+}
+
+
+int8_t i2c_write_word(uint8_t address, const uint8_t cmd, 
+								const uint16_t data)
+{
+	mraa_result_t status = MRAA_SUCCESS;
+    mraa_i2c_context i2c;
+
+
+    i2c = mraa_i2c_init_raw(I2C_BUS);
+    if (i2c == NULL) 
+    {
+        fprintf(stderr, "Failed to initialize I2C\n");
+   
+        return EXIT_FAILURE;
+    }
+
+    /* set slave address */
+    status = mraa_i2c_address(i2c, address);
+    if (status != MRAA_SUCCESS)
+    	return i2c_exit(i2c, status);
+
+    status = mraa_i2c_write_word_data(i2c, data, cmd);
+    if (status != MRAA_SUCCESS)
+    	return i2c_exit(i2c, status);
+
+    /* stop i2c */
+    mraa_i2c_stop(i2c);
+
+    /* deinitialize mraa for the platform  */
+
+    return EXIT_SUCCESS;
+}
+
+
+int8_t i2c_read_byte(uint8_t address, const uint8_t cmd,
+								uint8_t * data)
+{
+	mraa_result_t status = MRAA_SUCCESS;
+    mraa_i2c_context i2c;
+    int8_t ret;
+
+
+    i2c = mraa_i2c_init_raw(I2C_BUS);
+    if (i2c == NULL) 
+    {
+        fprintf(stderr, "Failed to initialize I2C\n");
+   
+        return EXIT_FAILURE;
+    }
+
+    /* set slave address */
+    status = mraa_i2c_address(i2c, address);
+    if (status != MRAA_SUCCESS)
+    	return i2c_exit(i2c, status);
+
+    ret = mraa_i2c_read_byte_data(i2c, cmd);
+    if (ret == -1)
+    	return i2c_exit(i2c, status);
+
+    *data = ret;
+
+    /* stop i2c */
+    mraa_i2c_stop(i2c);
+
+    /* deinitialize mraa for the platform  */
+
+    return EXIT_SUCCESS;
+}
+
+
+int8_t i2c_read_bytes(uint8_t address, const uint8_t cmd, uint8_t * data,
+								 int length)
+{
+	mraa_result_t status = MRAA_SUCCESS;
+    mraa_i2c_context i2c;
+    int8_t ret;
+
+
+    i2c = mraa_i2c_init_raw(I2C_BUS);
+    if (i2c == NULL) 
+    {
+        fprintf(stderr, "Failed to initialize I2C\n");
+   
+        return EXIT_FAILURE;
+    }
+
+    /* set slave address */
+    status = mraa_i2c_address(i2c, address);
+    if (status != MRAA_SUCCESS)
+    	return i2c_exit(i2c, status);
+
+    ret = mraa_i2c_read_bytes_data(i2c, cmd, data, length);
+    if (ret == -1)
+    	return i2c_exit(i2c, status);
+
+    /* stop i2c */
+    mraa_i2c_stop(i2c);
+
+    /* deinitialize mraa for the platform  */
+
+    return EXIT_SUCCESS;
+}
+
+static int8_t i2c_exit(mraa_i2c_context i2c, mraa_result_t status)
+{
+	mraa_result_print(status);
+
+    /* stop i2c */
+    mraa_i2c_stop(i2c);
+
+    /* deinitialize mraa for the platform */
+
+    return EXIT_FAILURE;
+}/**
+ * @file logger_task.c
+ * @brief This file contains logger task functionality.
+ *
+ * @author Kovuru Nagarjuna Reddy
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <pthread.h>
+#include <fcntl.h>
+#include <errno.h>
+#include "main_task.h"
+#include "logger_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* logger task message queue descriptor */
+mqd_t logTask_mq_d;
+/* logger file pointer */
+static FILE* log_fp;
+/* logger shared memory*/
+void *logTask_sh_mem;
+int logTask_sm_fd;
+/* logger task kill flag*/
+extern int logTask_kill;
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
+/* loglevel string names array*/
+const char* logLevel_nameString[LOG_ALL+1]= {"LOG_ERR","LOG_STATUS","LOG_INFO","LOG_ALL"};
+
+/***** Mutex Locks ****/
+pthread_mutex_t logQueue_mutex= PTHREAD_MUTEX_INITIALIZER;
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief write_message_LogQueue()
+ * This function writes message to logger queue. 
+ * @queue     : Message queue to write into 
+ * @logstruct : Logger message
+ * @log_struct_size : Message size 
+ *****************************************************************************/
+void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
+                                                                 size_t log_struct_size)
+{
+  pthread_mutex_lock(&logQueue_mutex);
+  if(ERROR == mq_send(queue, (const char*)logstruct, log_struct_size,0))
+  {
+    LOG_STD("[ERROR] MQ_SEND:%s\n",strerror(errno));
+  }
+  pthread_mutex_unlock(&logQueue_mutex);
+}
+
+/******************************************************************//**********
+ * @brief logger_task_init()
+ * This function creates below,
+ * Message Queue: To log messages from all the running tasks.
+ * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
+ * LogFile      : To store messages received from its message queue.
+ *****************************************************************************/
+int logger_task_init(void) 
+{
+  struct mq_attr logTaskQ_attr;
+  logTask_Msg_t logData;
+  int ret;
+  Task_Status_t logger_status;
+
+  /********* Create Logger Message Queue *************/
+  /* initialize message queue attribute structure */
+  logTaskQ_attr.mq_msgsize= sizeof(logTask_Msg_t);
+
+  logTaskQ_attr.mq_maxmsg= 128;
+  logTaskQ_attr.mq_flags= 0;
+  logTaskQ_attr.mq_curmsgs= 0;
+
+  logTask_mq_d =mq_open(LOGTASK_MQ_NAME, O_CREAT | O_RDWR | O_NONBLOCK, 0666, &logTaskQ_attr);
+  /* check for error in creation*/
+  if(logTask_mq_d == ERROR)
+  {
+    LOG_STD("[ERROR] MESSAGE QUEUE NOT CREATED:%s\n", strerror(errno));
+    return ERROR;
+  }
+  /* as logger queue initialized in above step, log into message queue 
+     instead of std output*/
+  LOG_TO_QUEUE(logData,LOG_INFO,LOGGER_TASK_ID,"MESSAGE QUEUE CREATED");
+
+  /********* Create Log File *************/
+  log_fp= fopen("my_log.txt", "w");
+  LOG_TO_QUEUE(logData,LOG_INFO,LOGGER_TASK_ID,"LOG FILE CREATED");
+  fclose(log_fp);
+
+
+  /************Create Shared Memory to share task status with main ******/	
+  logTask_sm_fd = shm_open(LOGTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
+  if(logTask_sm_fd == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,LOGGER_TASK_ID,"SHARED MEMORY NOT CREATED");
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,LOGGER_TASK_ID,"SHARED MEMORY CREATED");
+
+  /* truncate shared memory with required size */
+  ret = ftruncate(logTask_sm_fd, SM_SIZE);
+  if(ret == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,LOGGER_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,LOGGER_TASK_ID,"SHARED MEMORY TRUNCATED");
+
+  /*map the shared memory */
+  logTask_sh_mem = mmap(NULL, SM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED , logTask_sm_fd, 0);
+  if(logTask_sh_mem == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,LOGGER_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    return -1;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,LOGGER_TASK_ID,"SHARED MEMORY MAPPED");
+
+  /**** Enter the task status into shared memory *****/
+  logger_status=ALIVE;
+  /* Copy the contents of payload into the shared memory */
+  memcpy((char*)logTask_sh_mem, (char*)&logger_status, SM_SIZE);
+
+  LOG_STD("[INFO] LOGGER TASK INITIALIZED QUEUE, SHARED MEMORY & LOGFILE\n");
+
+  return logTask_mq_d;
+}
+
+/******************************************************************//**********
+ * @brief logger_task_process_MQ()
+ * This function processes logger queue i.e removes data from the logger queue 
+ * and enters in logger file.
+ *****************************************************************************/
+void logger_task_process_MQ(void)
+{
+  logTask_Msg_t  mq_data={0};
+  int ret, msg_prio;
+  logTask_Msg_t logData;
+
+  LOG_TO_QUEUE(logData,LOG_INFO,LOGGER_TASK_ID,"MESSAGE QUEUE PROCESS STARTED");
+  LOG_STD("[INFO] MESSAGE QUEUE PROCESS STARTED\n");
+  
+  /* process the data until kill signal to logger task is received */
+  while(!logTask_kill)
+  {
+    ret=mq_receive(logTask_mq_d, (char*)&(mq_data), sizeof(mq_data), &msg_prio );
+    /* ret: Received number of bytes if SUCCESS
+            -1 if ERROR */
+    if(ERROR !=ret)
+    {
+      /* log into file */
+       LOG_TO_FILE(mq_data);
+    }
+  } 
+
+}
+
+/******************************************************************//**********
+ * @brief logger_task_thread()
+ * This thread initializes the logger task resources and process data in 
+ * logger queue.
+ *****************************************************************************/
+void logger_task_thread(void) 
+{
+  logTask_Msg_t logData;
+  Task_Status_t logger_status;
+  int ret;
+
+  LOG_STD("[INFO] LOGGER TASK STARTED\n");
+  ret= logger_task_init();
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] LOGGER TASK INIT: %s\n", strerror(errno));
+    exit(ERROR);
+  }
+
+  LOG_STD("[INFO] [LOGGER] WAITING AT BARRIER\n");
+  /* wait logger task so that other tasks are synchronized with it*/
+  pthread_barrier_wait(&tasks_barrier);
+ LOG_STD("[INFO] [LOGGER] CROSSED BARRIER\n");
+ 
+  /* start logger queue processing */
+  logger_task_process_MQ();
+
+  /*********** KILL Signal Received ***********/
+  LOG_STD("[INFO] LOGGER TASK KILL SIGNAL RECEIVED\n");
+  /* flush logfile */
+  fflush(log_fp);
+  /* Update task status in shared memory */
+  logger_status=DEAD;
+  /* Copy the contents of payload into the share memory */
+  memcpy((char*)logTask_sh_mem, (char*)&logger_status, SM_SIZE);
+  /* close message queue*/
+  ret=mq_close(LOGTASK_MQ_NAME);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] LOGGER MESSAGE QUEUE CLOSE FAILED:%s\n", strerror(errno));
+  }
+  LOG_STD("[INFO] LOGGER MESSAGE QUEUE CLOSED\n");
+
+  ret=mq_unlink(LOGTASK_MQ_NAME);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] LOGGER MESSAGE QUEUE UNLINK FAILED:%s\n", strerror(errno));
+  }
+  LOG_STD("[INFO] LOGGER MESSAGE QUEUE UNLINKED\n");
+
+  pthread_exit(NULL);
+}
+/**
+ * @file light_task.c
+ * @brief This file contains light task functionality.
+ *
+ * @author Vipul Gupta
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include "logger_task.h"
+#include "light_task.h"
+#include <fcntl.h>
+#include <errno.h>
+#include "main_task.h"
+#include "led_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* light shared memory*/
+void *lightTask_sh_mem;
+int lightTask_sm_fd;
+/* light task kill flag*/
+extern int lightTask_kill;
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
+extern pthread_barrier_t init_barrier;
+extern mqd_t logTask_mq_d;
+timer_t light_timerid;
+float prev_lux;
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief write_control_reg()
+ * This function writes sensor control register with data,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_control_reg(const uint8_t data)
+{
+	return i2c_write_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_CONTROL_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_control_reg()
+ * This function reads sensor control register,
+ * @data: pointer to store read data
+ *****************************************************************************/
+int8_t read_control_reg(uint8_t * data)
+{
+	return i2c_read_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_CONTROL_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief write_timing_reg()
+ * This function writes to timing register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_timing_reg(const uint8_t data)
+{
+	return i2c_write_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_TIMING_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_timing_reg()
+ * This function reads timing register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_timing_reg(uint8_t * data)
+{
+	return i2c_read_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_TIMING_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief write_intthresh_low_reg()
+ * This function writes to intthreshold low register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_intthresh_low_reg(const uint16_t data)
+{
+	return i2c_write_word(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_WORD_REG | APDS_INTTHLOW_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_intthresh_low_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to stor ethe read data
+ *****************************************************************************/
+int8_t read_intthresh_low_reg(uint16_t * data)
+{
+	int8_t ret;
+	uint16_t val;
+	uint8_t arr[2];
+
+	ret =  i2c_read_bytes(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_INTTHLOW_REG), arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+	val = ((uint16_t)arr[1] << 8 | arr[0]);
+ 	*data = val;
+	return ret;
+}
+
+/******************************************************************//**********
+ * @brief write_intthresh_high_reg()
+ * This function writes to inthreshold register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_intthresh_high_reg(const uint16_t data)
+{
+	return i2c_write_word(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_WORD_REG | APDS_INTTHHIGH_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_intthresh_high_reg()
+ * This function reads intthreshold register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_intthresh_high_reg(uint8_t * data)
+{
+	int8_t ret;
+	uint16_t val;
+	uint8_t arr[2];
+
+	ret =  i2c_read_bytes(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_INTTHHIGH_REG), arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+	val = ((uint16_t)arr[1] << 8 | arr[0]);
+	*data = val;
+	return ret;
+}
+
+/******************************************************************//**********
+ * @brief write_intcontrol_reg()
+ * This function writes to intcontrol register,
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_intcontrol_reg(const uint8_t data)
+{
+	return i2c_write_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_INTCTRL_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_intcontrol_reg()
+ * This function reads intcontrol register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_intcontrol_reg(uint8_t * data)
+{
+	return i2c_read_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_INTCTRL_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_id_reg()
+ * This function reads id register,
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_id_reg(uint8_t * data)
+{
+	return i2c_read_byte(APDS_SENS_DEV_ADDR,
+			(APDS_CMD_BYTE_REG | APDS_ID_REG), data);
+}
+
+/******************************************************************//**********
+ * @brief read_sensor_lux()
+ * This function reads the sensor lux,
+ * @data: pointer to strore the read data
+ *****************************************************************************/
+int8_t read_sensor_lux(float * data)
+{
+	int8_t ret;
+	float s_lux;
+	uint8_t arr[2];
+	uint16_t ch0, ch1;
+
+	ret = i2c_read_bytes(APDS_SENS_DEV_ADDR, 
+    			(APDS_CMD_BYTE_REG | APDS_D0LOW_REG), arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+	ch0 = ((uint16_t)arr[1] << 8 | arr[0]);
+
+	ret = i2c_read_bytes(APDS_SENS_DEV_ADDR, 
+    			(APDS_CMD_BYTE_REG | APDS_D1LOW_REG), arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+	ch1 = ((uint16_t)arr[1] << 8 | arr[0]);
+
+	if(((float)ch1/ch0) <= 0.5 &&  ((float)ch1/ch0) > 0)
+   		s_lux = (0.0304 * ch0) - (0.062 * ch0 * pow(((float)ch1/ch0), 1.4));
+
+   	else if(((float)ch1/ch0) <= 0.61 &&  ((float)ch1/ch0) > 0.5)
+   		s_lux = (0.0224 * ch0) - (0.031 * ch1);
+
+	else if(((float)ch1/ch0) <= 0.80 &&  ((float)ch1/ch0) > 0.61)
+   		s_lux = (0.0128 * ch0) - (0.0153 * ch1);
+
+	else if(((float)ch1/ch0) <= 1.3 &&  ((float)ch1/ch0) > 0.80)
+   		s_lux = (0.00146 * ch0) - (0.00112 * ch1);
+   	else
+   		s_lux = 0;
+
+   	*data = s_lux;
+
+	return ret;
+}
+
+/******************************************************************//**********
+ * @brief light_start_test()
+ * This function checks the ID register and return 0 on success and -1 
+ * failure.
+ *****************************************************************************/
+int light_start_test(void)
+{
+	uint8_t id;
+	read_id_reg(&id);
+	if(id != 0x50)		/* Factory device ID */
+		return ERROR;
+	return SUCCESS;
+}
+
+/* Message APIs */
+int sensor_lux_req(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Light_Task]");
+	read_sensor_lux(&(ptr->value));
+	strcpy(ptr->msg, "Lux");
+	return 0;
+}
+
+/******************************************************************//**********
+ * @brief light_task_init()
+ * This function creates shared memory to share the task status.
+ * Shared Memory: To share light task's status(DEAD/ALIVE) with main_task.
+ *****************************************************************************/
+int light_task_init(void) 
+{
+  logTask_Msg_t logData;
+  int ret;
+  Task_Status_t light_status;
+
+  /************Create Shared Memory to share task status with main ******/  
+  lightTask_sm_fd = shm_open(LIGHTTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
+  if(lightTask_sm_fd == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT CREATED");
+    LED_ON();
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SHARED MEMORY CREATED");
+
+  /* truncate shared memory with required size */
+  ret = ftruncate(lightTask_sm_fd, SM_SIZE);
+  if(ret == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    LED_ON();
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SHARED MEMORY TRUNCATED");
+
+  /*map the shared memory */
+  lightTask_sh_mem = mmap(NULL, SM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED , lightTask_sm_fd, 0);
+  if(lightTask_sh_mem == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,LIGHT_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    LED_ON();
+    return -1;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SHARED MEMORY MAPPED");
+
+  /**** Enter the task status into shared memory *****/
+  light_status=ALIVE;
+  /* Copy the contents of payload into the shared memory */
+  memcpy((char*)lightTask_sh_mem, (char*)&light_status, SM_SIZE);
+
+  LOG_STD("[INFO] [LIGHT] INITIALIZED SHARED MEMORY\n");
+
+  read_sensor_lux(&prev_lux);
+
+  return SUCCESS;
+}
+
+/******************************************************************//****
+ * @brief light_timer_handler()
+ * This is a timer_handler occurs every 3s and updates the light parameters
+ * @signal: occured signal number
+ * @return: None
+ ***********************************************************************/
+void light_timer_handler(int signal)
+{
+  logTask_Msg_t logData;
+  float lux;
+
+  /***** Read the sensor and display****/
+  LOG_STD("[INFO] [LIGHT_HANDLER] READING LIGHT SENSOR\n" );
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"READING LIGHT SENSOR");
+  read_sensor_lux(&lux);
+  LOG_STD("[INFO] [LIGHT_HANDLER] SENSOR LUX: %f\n", lux );
+  LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SENSOR LUX: %f\n", lux);
+
+  if((prev_lux < 15.0 && lux >= 15.0) || (prev_lux > 15.0 && lux <= 15.0))
+  {
+  	LED_ON();
+  	LOG_STD("[INFO] [LIGHT_HANDLER] SUDDEN CHANGE IN LUMINOSITY!\n");
+  	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SUDDEN CHANGE IN LUMINOSITY!");
+  }
+  else
+	{
+		LED_OFF();
+	}
+  prev_lux = lux;
+
+}
+
+/******************************************************************//**********
+ * @brief light_task_thread()
+ * This thread initializes the light task resources such as shared memory
+ *****************************************************************************/
+void light_task_thread(void) 
+{
+	logTask_Msg_t logData;
+	Task_Status_t light_status;
+	struct itimerval timer;
+    int ret;
+
+	struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+
+    LOG_STD("[INFO] [LIGHT] WAITING AT TASK BARRIER\n");
+
+	/* wait light task so that other tasks(logger task queue) are synchronized with it*/
+	pthread_barrier_wait(&tasks_barrier);
+	LOG_STD("[INFO] [LIGHT] CROSSED TASK BARRIER\n");
+	
+	LOG_STD("[INFO] [LIGHT] TASK STARTED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK STARTED");	
+	ret= light_task_init();
+	if(ERROR == ret)
+	{
+		LOG_STD("[ERROR] [LIGHT] TASK INIT: %s\n", strerror(errno));
+		LED_ON();
+		exit(ERROR);
+	}
+	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"LIGHT TASK INITIALIZED");
+	
+	/* Turning on Light sensor*/
+	write_control_reg(POWER_ON);
+	LOG_TO_QUEUE(logData,LOG_INFO, LIGHT_TASK_ID,"TURNED ON LIGHT SENSOR");
+
+	pthread_barrier_wait(&init_barrier);
+
+	int sem_val;
+	sem_t * sem_start;
+	/* Start semaphore initialized to 2 */
+	sem_start = sem_open(SEM_START, O_CREAT);
+	sem_getvalue(sem_start, &sem_val);
+	sem_wait(sem_start);
+
+    /************** POSIX Timer setup *******/
+
+	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SETTING TIMER HANDLER");
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = light_timer_handler;
+    sev.sigev_value.sival_ptr = &light_timerid;
+    timer_create(CLOCK_REALTIME, &sev, &light_timerid);
+    
+    /* Start the timer */
+    its.it_value.tv_sec = 5;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    timer_settime(light_timerid, 0, &its, NULL);
+	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"TIMER SETUP DONE");
+	LOG_STD("[INFO] [LIGHT] POSIX TIMER SETUP DONE\n");
+	
+    while(!lightTask_kill);
+    
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] [LIGHT] KILL SIGNAL RECEIVED\n");
+	timer_delete(light_timerid);
+	LOG_STD("[INFO] [LIGHT] TIMER DELETED\n");
+	/* Update task status in shared memory */
+	light_status=DEAD;
+	/* Copy the contents of payload into the share memory */
+	memcpy((char*)lightTask_sh_mem, (char*)&light_status, SM_SIZE);
+
+	pthread_exit(NULL);
+}
+/**
+ * @file temp_task.c
+ * @brief This file contains temp task functionality.
+ *
+ * @author Vipul Gupta
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include "temp_task.h"
+#include <fcntl.h>
+#include <errno.h>
+#include "main_task.h"
+#include "logger_task.h"
+#include "led_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* temp shared memory*/
+void *tempTask_sh_mem;
+int tempTask_sm_fd;
+/* temp task kill flag*/
+extern int tempTask_kill;
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
+extern pthread_barrier_t init_barrier;
+extern mqd_t logTask_mq_d;
+timer_t temp_timerid;
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief read_temp_celsius()
+ * This function reads temperature in celcius
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_temp_celsius(float * data)
+{
+	int8_t ret;
+	float temp;
+	uint8_t arr[2];
+	uint16_t temp_reg;
+
+	ret = i2c_read_bytes(TMP102_DEV_ADDR, TMP102_TEMP_REG, arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+    temp_reg = ((uint16_t)arr[0] << 8 | arr[1]);
+
+    /* 12 higher bits temperature data */
+    temp_reg = temp_reg >> 4;
+
+    if(!(temp_reg & (1 << 11)))
+    {
+    	temp = temp_reg * 0.0625;
+    	*data = temp;
+    }
+    else
+    {
+    	/* Two's complement of only 12 lower bits*/
+    	temp_reg = temp_reg | (0xF000);
+    	temp_reg = ~(temp_reg) + 1;
+    	temp = temp_reg * (-0.0625);
+    	*data = temp;
+    }
+
+    return ret;
+}
+
+/******************************************************************//**********
+ * @brief read_temp_fahrenheit()
+ * This function reads temperature in farenheit
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_temp_fahrenheit(float * data)
+{
+	float fah_temp;
+	int8_t ret;
+
+	ret = read_temp_celsius(&fah_temp);
+	*data = (fah_temp * 1.8) + 32;
+	return ret;
+}
+
+/******************************************************************//**********
+ * @brief read_temp_kelvin()
+ * This function reads temperature in kelvins
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_temp_kelvin(float * data)
+{
+	float kel_temp;
+	int8_t ret;
+
+	ret = read_temp_celsius(&kel_temp);
+	*data = kel_temp + 273.15;
+	return ret;
+}
+
+/******************************************************************//**********
+ * @brief write_config_reg()
+ * This function writes configuration register
+ * @data: data to write
+ *****************************************************************************/
+int8_t write_config_reg(const uint16_t data)
+{
+	uint16_t tmp1, tmp2, msb_val;
+	tmp1 = data & 0xFF00;
+	tmp2 = data & 0x00FF;
+	msb_val = (tmp1 >> 8 | tmp2 << 8);
+
+	return i2c_write_word(TMP102_DEV_ADDR, TMP102_CONF_REG, msb_val);
+}
+
+/******************************************************************//**********
+ * @brief read_config_reg()
+ * This function reads configuration register
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_config_reg(uint16_t * data)
+{
+	int8_t ret;
+	uint16_t val;
+	uint8_t arr[2];
+
+	ret =  i2c_read_bytes(TMP102_DEV_ADDR, TMP102_CONF_REG, arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+    val = ((uint16_t)arr[0] << 8 | arr[1]);
+    *data = val;
+    return ret;
+}
+
+/******************************************************************//**********
+ * @brief read_tlow_celsius()
+ * This function reads tlow
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_tlow_celsius(float * data)
+{
+	int8_t ret;
+	float temp;
+	uint8_t arr[2];
+	uint16_t temp_reg;
+
+	ret = i2c_read_bytes(TMP102_DEV_ADDR, TMP102_TLOW_REG, arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+    temp_reg = ((uint16_t)arr[0] << 8 | arr[1]);
+
+    /* 12 higher bits temperature data */
+    temp_reg = temp_reg >> 4;
+
+    if(!(temp_reg & (1 << 11)))
+    {
+    	temp = temp_reg * 0.0625;
+    	*data = temp;
+    }
+    else
+    {
+    	/* Two's complement of only 12 lower bits*/
+    	temp_reg = temp_reg | (0xF000);
+    	temp_reg = ~(temp_reg) + 1;
+    	temp = temp_reg * (-0.0625);
+    	*data = temp;
+    }
+
+    return ret;
+}
+
+/******************************************************************//**********
+ * @brief read_thigh_celsius()
+ * This function reads thigh
+ * @data: pointer to store the read data
+ *****************************************************************************/
+int8_t read_thigh_celsius(float * data)
+{
+	int8_t ret;
+	float temp;
+	uint8_t arr[2];
+	uint16_t temp_reg;
+
+	ret = i2c_read_bytes(TMP102_DEV_ADDR, TMP102_THIGH_REG, arr, 2);
+	if(ret == EXIT_FAILURE)
+    	return EXIT_FAILURE;
+
+    temp_reg = ((uint16_t)arr[0] << 8 | arr[1]);
+
+    /* 12 higher bits temperature data */
+    temp_reg = temp_reg >> 4;
+
+    if(!(temp_reg & (1 << 11)))
+    {
+    	temp = temp_reg * 0.0625;
+    	*data = temp;
+    }
+    else
+    {
+    	/* Two's complement of only 12 lower bits*/
+    	temp_reg = temp_reg | (0xF000);
+    	temp_reg = ~(temp_reg) + 1;
+    	temp = temp_reg * (-0.0625);
+    	*data = temp;
+    }
+
+    return ret;
+}
+
+/******************************************************************//**********
+ * @brief temp_start_test()
+ * This function checks the Config register default value and return 0
+ * on success and -1 on failure.
+ *****************************************************************************/
+int temp_start_test(void)
+{
+	uint16_t check;
+
+	read_config_reg(&check);
+	if(check != 0x60a0)		/* Default value */
+		return ERROR;
+	
+	return SUCCESS;
+
+}
+
+int get_temp_cel(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Temperature_Task]");
+	read_temp_celsius(&(ptr->value));
+	strcpy(ptr->msg, "Degree Celsius");
+	return 0;
+}
+
+int get_temp_kel(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Temperature_Task]");
+	read_temp_kelvin(&(ptr->value));
+	strcpy(ptr->msg, "Degree Kelvin");
+	return 0;
+}
+
+int get_temp_fah(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Temperature_Task]");
+	read_temp_fahrenheit(&(ptr->value));
+	strcpy(ptr->msg, "Degree Fahrenheit");
+	return 0;
+}
+
+/******************************************************************//**********
+ * @brief temp_task_init()
+ * This function creates shared memory to share the task status.
+ * Shared Memory: To share temp task's status(DEAD/ALIVE) with main_task.
+ *****************************************************************************/
+int temp_task_init(void) 
+{
+  logTask_Msg_t logData;
+  int ret;
+  Task_Status_t temp_status;
+
+  /************Create Shared Memory to share task status with main ******/  
+  tempTask_sm_fd = shm_open(TEMPTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
+  if(tempTask_sm_fd == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,TEMP_TASK_ID,"SHARED MEMORY NOT CREATED");
+    LED_ON();
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SHARED MEMORY CREATED");
+
+  /* truncate shared memory with required size */
+  ret = ftruncate(tempTask_sm_fd, SM_SIZE);
+  if(ret == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,TEMP_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    LED_ON();
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SHARED MEMORY TRUNCATED");
+
+  /*map the shared memory */
+  tempTask_sh_mem = mmap(NULL, SM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED , tempTask_sm_fd, 0);
+  if(tempTask_sh_mem == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,TEMP_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    LED_ON();
+    return -1;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SHARED MEMORY MAPPED");
+
+  /**** Enter the task status into shared memory *****/
+  temp_status=ALIVE;
+  /* Copy the contents of payload into the shared memory */
+  memcpy((char*)tempTask_sh_mem, (char*)&temp_status, SM_SIZE);
+
+  LOG_STD("[INFO] [TEMP] TASK INITIALIZED SHARED MEMORY\n");
+
+  return SUCCESS;
+}
+
+/******************************************************************//****
+ * @brief temp_timer_handler()
+ * This is a timer_handler occurs every 3s and updates the temperature
+ * parameters
+ * @signal: occured signal number
+ * @return: None
+ ***********************************************************************/
+void temp_timer_handler(int signal)
+{
+  float temp;
+  logTask_Msg_t logData;
+
+  /***** Read the sensor and display****/
+  LOG_STD("[INFO] [TEMP_HANDLER] READING TEMPERATURE SENSOR\n" );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"READING TEMPERATURE SENSOR");
+  
+  read_temp_celsius(&temp);
+  LOG_STD("[INFO] [TEMP_HANDLER] TEMPERATURE IN CELSIUS: %f\n", temp );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TEMPERATURE IN CELSIUS: %f\n", temp);
+  
+  read_temp_fahrenheit(&temp);
+  LOG_STD("[INFO] [TEMP_HANDLER] TEMPERATURE IN FARENHEIT: %f\n", temp );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TEMPERATURE IN FARENHEIT: %f\n", temp);
+  
+  read_temp_kelvin(&temp);
+  LOG_STD("[INFO] [TEMP_HANDLER] TEMPERATURE IN KELVIN: %f\n", temp );
+  LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TEMPERATURE IN KELVIN: %f\n", temp);
+}
+
+/******************************************************************//**********
+ * @brief temperature_task_thread()
+ * This thread initializes the temperature task resources such as shared memory
+ *****************************************************************************/
+void temperature_task_thread(void) 
+{
+	logTask_Msg_t logData;
+	Task_Status_t temp_status;
+	struct itimerval timer;
+    struct sigaction timer_sig;
+    int ret;
+
+	struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+	
+	LOG_STD("[INFO] [TEMP] WAITING AT TASK BARRIER \n");
+
+
+	/* wait temp task so that other tasks(temp task queue) are synchronized with it*/
+	pthread_barrier_wait(&tasks_barrier);
+	LOG_STD("[INFO] [TEMP] CROSSED TASK BARRIER \n");
+	
+	LOG_STD("[INFO] [TEMP] TASK STARTED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK STARTED");	
+	ret= temp_task_init();
+	if(ERROR == ret)
+	{
+		LOG_STD("[ERROR] [TEMP] TASK INIT: %s\n", strerror(errno));
+		LED_ON();
+		exit(ERROR);
+	}
+	LOG_TO_QUEUE(logData,LOG_INFO, TEMP_TASK_ID,"TEMP TASK INITIALIZED");
+
+	pthread_barrier_wait(&init_barrier);
+
+	int sem_val;
+	sem_t * sem_start;
+	/* Start semaphore initialized to 2 */
+	sem_start = sem_open(SEM_START, O_CREAT);
+	sem_wait(sem_start);
+
+    /************** POSIX Timer setup *******/
+
+	LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SETTING TIMER HANDLER");
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = temp_timer_handler;
+    sev.sigev_value.sival_ptr = &temp_timerid;
+    timer_create(CLOCK_REALTIME, &sev, &temp_timerid);
+    
+    /* Start the timer */
+    its.it_value.tv_sec = 5;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    timer_settime(temp_timerid, 0, &its, NULL);
+	LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"TIMER SETUP DONE");
+	LOG_STD("[INFO] [TEMP] POSIX TIMER SETUP DONE\n");
+    
+    while(!tempTask_kill);
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] [TEMP] TASK KILL SIGNAL RECEIVED\n");
+	timer_delete(temp_timerid);
+	LOG_STD("[INFO] [TEMP] TIMER DELETED\n");
+	/* Update task status in shared memory */
+	temp_status=DEAD;
+	/* Copy the contents of payload into the share memory */
+	memcpy((char*)tempTask_sh_mem, (char*)&temp_status, SM_SIZE);
+
+	pthread_exit(NULL);
+}
+
+/**
+ * @file main_task.c
+ * @brief This file contains main task which creates multiple threads such as
+ * logger_task, temperature_task, light_task, socket_task & status read.
+ 
+ * @author Kovuru Nagarjuna Reddy
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <pthread.h>
+#include <sys/stat.h>
+#include <fcntl.h>f
+#include <errno.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <semaphore.h>
+#include "main_task.h"
+#include "logger_task.h"
+#include "temp_task.h"
+#include "light_task.h"
+#include "socket_task.h"
+#include "led_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* array of task status strings */
+const char* task_statusString[]={"DEAD", "ALIVE"};
+/* array of function name strings*/
+const char *threadfun_name[]= { "logger_task_thread", "temp_task_thread","light_task_thread","socket_task_thread","status_read_thread"};
+/* array of task id strings*/
+const char* taskId_nameString[MAIN_TASK_ID+1]= { "LOGGER_TASK_ID", "TEMP_TASK_ID", \
+                                "LIGHT_TASK_ID", "SOCKET_TASK_ID", "MAIN_TASK_ID" };
+/* barrier variable to synchronize all running tasks */
+pthread_barrier_t tasks_barrier;
+pthread_barrier_t init_barrier;
+/* logger message queue descriptor*/
+extern mqd_t logTask_mq_d;
+
+/***** Shared Memories variables for all tasks ****/
+/* logger task shared memory*/
+extern void *logTask_sh_mem;
+extern int logTask_sm_fd;
+/* temperature task shared memory*/
+extern void *tempTask_sh_mem;
+extern int tempTask_sm_fd;
+/* light task shared memory*/
+extern void *lightTask_sh_mem;
+extern int lightTask_sm_fd;
+/* socket task shared memory*/
+extern void *socketTask_sh_mem;
+extern int socketTask_sm_fd;
+
+/**** KILL Flags for different tasks/threads*****/
+int logTask_kill=0;
+int status_thread_kill=0;
+int tempTask_kill=0;
+int lightTask_kill=0;
+int socketTask_kill=0;
+
+/**** Function prototypes ****/
+void status_read_thread();
+extern void logger_task_thread();
+extern void temperature_task_thread();
+extern void light_task_thread();
+extern void socket_task_thread();
+
+/* array of function pointers*/
+static void (*thread_fun[NUM_THREADS]) = { logger_task_thread, status_read_thread, temperature_task_thread, light_task_thread, socket_task_thread };
+timer_t main_timerid;
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//****
+ * @brief signal_handler()
+ * This is a signal_handler for SIGUSR1 and SIGUSR2
+ * @signal: occured signal number
+ * @return: None
+ ***********************************************************************/
+void signal_handler(int signal)
+{
+  /* check the occured signal */
+  switch(signal)
+  {
+    case SIGUSR1:
+      /* Set flag to kill logger task */
+      logTask_kill=1;
+      lightTask_kill=1;
+      tempTask_kill=1;
+      socketTask_kill=1;      
+      LOG_STD("[INFO] [SIG_HANDLER] USR1 RECEIVED\n");
+      break;
+    case SIGUSR2:
+      status_thread_kill=1;
+      LOG_STD("[INFO] [SIG_HANDLER] USR2 RECEIVED\n");
+      break;   
+    default:
+      LOG_STD("[INFO] [SIG_HANDLER] UNKNOWN SIGNAL\n");  
+   }
+}
+
+/******************************************************************//****
+ * @brief timer_handler()
+ * This is a timer_handler occurs every 3s and gets the status of all 
+ * running threads(DEAD/ALIVE) by reading each tasks shared memory. 
+ * And logs these statusses into logger message queue
+ * @signal: occured signal number
+ * @return: None
+ ***********************************************************************/
+void timer_handler(int signal)
+{
+  logTask_Msg_t logData;
+  Task_Status_t logger_status, light_status, temp_status, socket_status;
+
+  /******** Read Shared memories of all the tasks to get the statusses *****/
+  /* read status from logger task shared memory */
+  memcpy((char*)&logger_status,(char*)logTask_sh_mem,SM_SIZE);
+  /* read status from light task shared memory */
+  memcpy((char*)&light_status,(char*)lightTask_sh_mem,SM_SIZE);
+  /* read status from logger task shared memory */
+  memcpy((char*)&temp_status,(char*)tempTask_sh_mem,SM_SIZE);
+  /* read status from light task shared memory */
+  memcpy((char*)&socket_status,(char*)socketTask_sh_mem,SM_SIZE);
+  
+
+	LOG_STD("[INFO] [STATUS_HANDLER] READING TASK STATUS\n" );
+	LOG_STD("[INFO] [STATUS_HANDLER] LOGGER TASK STATUS: [%s]\n",task_statusString[logger_status] );
+	LOG_STD("[INFO] [STATUS_HANDLER] LIGHT TASK STATUS: [%s]\n", task_statusString[light_status]); 
+	LOG_STD("[INFO] [STATUS_HANDLER] TEMPERATURE TASK STATUS: [%s]\n",task_statusString[temp_status] );
+	LOG_STD("[INFO] [STATUS_HANDLER] SOCKET TASK STATUS: [%s]\n", task_statusString[socket_status]); 
+   
+  if( logger_status != DEAD ) //if logger DEAD no logger queue
+  {
+    LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"LOGGER TASK STATUS: [%s]\n", \
+                                            task_statusString[logger_status]);
+    LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"LIGHT TASK STATUS: [%s]\n", \
+                                              task_statusString[light_status]); 
+    LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"TEMPERATURE TASK STATUS: [%s]\n", \
+                                              task_statusString[temp_status]);
+    LOG_TO_QUEUE(logData,LOG_STATUS,MAIN_TASK_ID,"SOCKET TASK STATUS: [%s]\n", \
+                                              task_statusString[socket_status]);       
+  }
+
+}
+
+/******************************************************************//**********
+ * @brief status_read_thread()
+ * This thread setups POSIX timer to expire every 3s inside which we read 
+ * each task statuses 
+ *****************************************************************************/
+void status_read_thread(void) 
+{
+  struct itimerval timer;
+  logTask_Msg_t logData;
+  int ret;
+
+	struct sigevent sev;
+    struct itimerspec its;
+    long long freq_nanosecs;
+    sigset_t mask;
+    struct sigaction sa;
+    
+	LOG_STD("[INFO] [MAIN_STATUS] WAITING AT TASK BARRIER\n");
+	pthread_barrier_wait(&tasks_barrier);
+	LOG_STD("[INFO] [MAIN_STATUS] CROSSED TASK BARRIER\n");
+
+    /************** POSIX Timer setup *******/
+	LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"SETTING TIMER HANDLER");
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = timer_handler;
+    sev.sigev_value.sival_ptr = &main_timerid;
+    timer_create(CLOCK_REALTIME, &sev, &main_timerid);
+    
+    /* Start the timer */
+    its.it_value.tv_sec = 5;
+    its.it_value.tv_nsec = 0;
+    its.it_interval.tv_sec = its.it_value.tv_sec;
+    its.it_interval.tv_nsec = its.it_value.tv_nsec;
+
+    timer_settime(main_timerid, 0, &its, NULL);
+	LOG_TO_QUEUE(logData,LOG_INFO,MAIN_TASK_ID,"TIMER SETUP DONE");
+	LOG_STD("[INFO] [MAIN_STATUS] POSIX TIMER SETUP DONE\n");
+
+    while(!status_thread_kill);
+    
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] [MAIN_STATUS] KILL SIGNAL RECEIVED\n");
+	timer_delete(main_timerid);
+	LOG_STD("[INFO] [MAIN_STATUS] TIMER DELETED\n");
+
+  /***** Unlink Shared Memories of all tasks ******/
+  /* free logger task shared memory */
+  ret= close(logTask_sm_fd);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] LOGTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] LOGTASK SHARED MEMORY CLOSED\n");
+
+  ret=shm_unlink(LOGTASK_SM_NAME);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] LOGTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] LOGTASK SHARED MEMORY UNLINKED\n");
+
+  /* free light task shared memory */
+  ret= close(lightTask_sm_fd);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] LIGHTTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] LIGHTTASK SHARED MEMORY CLOSED\n");
+
+  ret=shm_unlink(LIGHTTASK_SM_NAME);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] LIGHTTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] LIGHTTASK SHARED MEMORY UNLINKED\n");
+  
+  /* free temp task shared memory */
+  ret= close(tempTask_sm_fd);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] TEMPTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] TEMPTASK SHARED MEMORY CLOSED\n");
+
+  ret=shm_unlink(TEMPTASK_SM_NAME);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] TEMPTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] TEMPTASK SHARED MEMORY UNLINKED\n");
+  
+  /* free socket task shared memory */
+  ret= close(socketTask_sm_fd);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] SOCKETTASK SHARED MEMORY CLOSE FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] SOCKETTASK SHARED MEMORY CLOSED\n");
+
+  ret=shm_unlink(SOCKETTASK_SM_NAME);
+  if(ERROR == ret)
+  {
+    LOG_STD("[ERROR] [MAIN_STATUS] SOCKETTASK SHARED MEMORY UNLINK FAILED:%s\n", strerror(errno));
+    LED_ON();
+  }
+  LOG_STD("[INFO] [MAIN_STATUS] SOCKETTASK SHARED MEMORY UNLINKED\n");  
+  
+  pthread_exit(NULL);
+}
+
+int system_test(void)
+{
+	Task_Status_t logger_status, light_status, temp_status, socket_status;
+
+	/******** Read Shared memories of all the tasks to get the statusses *****/
+	/* read status from logger task shared memory */
+	memcpy((char*)&logger_status,(char*)logTask_sh_mem,SM_SIZE);
+	/* read status from light task shared memory */
+	memcpy((char*)&light_status,(char*)lightTask_sh_mem,SM_SIZE);
+	/* read status from logger task shared memory */
+	memcpy((char*)&temp_status,(char*)tempTask_sh_mem,SM_SIZE);
+	/* read status from light task shared memory */
+	memcpy((char*)&socket_status,(char*)socketTask_sh_mem,SM_SIZE);
+
+	/* Start-up tests */
+
+	if(light_start_test())
+	{
+		/* Enter log message */
+		LED_ON();
+		return ERROR;
+	}
+	if(temp_start_test())
+	{
+		/* Enter log message */
+		LED_ON();
+		return ERROR;
+	}
+	if(!(logger_status & light_status & temp_status & socket_status))
+	{
+		LED_ON();
+		return ERROR;
+	}
+
+	return SUCCESS;
+}
+
+/******************************************************************//**********
+ * @brief main()
+ * This function creates creates multiple threads such as logger_task, 
+ * temperature_task, light_task, socket_task & status read and 
+ * waits for its completion
+ *****************************************************************************/
+int main(int argc, char** argv)
+{
+  pthread_t threads[NUM_THREADS];
+  logTask_Msg_t logData;
+  struct sigaction user_sig;
+  int ret;
+  int index;
+
+  /* create barrier for all threads and main */
+  pthread_barrier_init( &tasks_barrier, NULL, NUM_THREADS+1);
+
+  pthread_barrier_init( &init_barrier, NULL, 3); //light+temp+main
+
+
+  LED_INIT();
+  LED_OFF();
+
+  /**** Thread Creation *******/
+  LOG_STD("[INFO] [MAIN] CREATING THREADS \n");
+  /* run loop required thread number of times */
+  for (index = 0; index< NUM_THREADS; index++) 
+  {
+    ret=pthread_create(&threads[index], NULL, thread_fun[index], NULL);
+    if(ret==0)
+    {
+      LOG_STD("[INFO] [MAIN] THREAD %s CREATED \n", threadfun_name[index]);
+    }
+    else
+    {
+      LOG_STD("[ERROR] [MAIN] THREAD %s NOT CREATED: %s\n", threadfun_name[index], strerror(errno));
+      LED_ON();
+    }
+  }
+
+  LOG_STD("[INFO] [MAIN] WAITING AT TASK BARRIER \n");
+  pthread_barrier_wait(&tasks_barrier);
+  LOG_STD("[INFO] [MAIN] CROSSED TASK BARRIER \n");
+
+  int sem_val;
+	sem_t * sem_start;
+	/* Start semaphore initialized to 2 */
+	sem_start = sem_open(SEM_START, O_CREAT, 0660, 0);
+
+  pthread_barrier_wait(&init_barrier);
+
+	
+	LOG_STD("[INFO] [MAIN] START UP TEST\n");
+	//////startup here ////
+
+	ret = system_test();
+	if(ret == ERROR)
+	{
+		/* LOG message - Start up test failed */
+    signal_handler(SIGUSR1);  //kill all threads
+		return ERROR;
+	}
+	else if(ret == SUCCESS)
+	{
+		LOG_STD("[INFO] SYSTEM TEST SUCCESS! \n");
+		sem_post(sem_start);
+		sem_post(sem_start);
+	}
+
+  /****** Signal Handler Linking to SIGUSR1 & SIGUSR2 *******/
+  user_sig.sa_handler= &signal_handler;
+  /* link USR1 signal: kills all threads except status_read thread*/
+  if( sigaction(SIGUSR1, &user_sig, NULL)<0 )
+  {
+    LOG_STD("[ERROR] [MAIN] USR1 NOT LINKED\n" );
+    LED_ON();
+    return 1;
+  }
+  /* link USR2 signal: kills status_read thread*/  
+  if( sigaction(SIGUSR2, &user_sig, NULL)<0 )
+  {
+    LOG_STD("[ERROR] [MAIN] USR2 NOT LINKED\n" );
+    LED_ON();
+    return 1;
+  }
+
+  /***** Waiting for threads to complete ******/
+  LOG_STD("[INFO] [MAIN] WAITING FOR THREADS COMPLETION \n");
+  /* run loop required thread number of times */
+  for (index = 0; index< NUM_THREADS; index++) 
+  {
+    ret=pthread_join(threads[index], NULL);
+    if(ret==0)
+    {
+      LOG_STD("[INFO] [MAIN] THREAD %s COMPLETED\n", threadfun_name[index]);
+    }
+    else
+    {
+      LOG_STD("[ERROR] [MAIN] THREAD %s NOT COMPLETED: %s\n", threadfun_name[index], strerror(errno));
+      LED_ON();
+    }
+  }
+
+  exit(EXIT_SUCCESS);
+}
+/**
+ * @file unittest_temp.c
+ * @brief This file contains unit test functions for temp sensor.
+ *
+ * @author Kovuru Nagarjuna Reddy
+ * @date March 17, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//**********************************************************************************
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include <pthread.h>
+#include "main_task.h"
+#include "logger_task.h"
+#include "temp_task.h"
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************************
+ * @brief test_temp_regCheck
+ * unit test function to test all the temperature sensor register functions
+ *****************************************************************************/
+void test_temp_regCheck(void **state)
+{
+	uint8_t  data;
+	int8_t ret;
+	
+	/******* Test config register *********/
+	data=0xFF;
+	ret=write_config_reg(data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	
+	ret=read_config_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0xFF);
+	
+	/******* Test tlow register *********/
+	ret=read_tlow_celsius(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	//assert_int_equal(data, 0xFF);
+	
+	/******* Test thigh register *********/
+	ret=read_thigh_celsius(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	//assert_int_equal(data, 0xFF);
+}
+
+/**
+ * @file socket_task.c
+ * @brief This file contains socket task functionality.
+ *
+ * @author Vipul Gupta
+ * @date Mar 16, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include "socket_task.h"
+#include "light_task.h"
+#include "temp_task.h"
+#include "led_task.h"
+#include "logger_task.h"
+#include "main_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* logger shared memory*/
+void *socketTask_sh_mem;
+int socketTask_sm_fd;
+/* logger task kill flag*/
+extern int socketTask_kill;
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
+extern mqd_t logTask_mq_d;
+API_message_t req_msg;
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief socket_task_init()
+ * This function creates shared memory to share the task status.
+ * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
+ *****************************************************************************/
+int socket_task_init(void) 
+{
+  logTask_Msg_t logData;
+  int ret;
+  Task_Status_t socket_status;
+
+  /************Create Shared Memory to share task status with main ******/  
+  socketTask_sm_fd = shm_open(SOCKETTASK_SM_NAME, O_CREAT | O_RDWR, 0666);
+  if(socketTask_sm_fd == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,SOCKET_TASK_ID,"SHARED MEMORY NOT CREATED");
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,SOCKET_TASK_ID,"SHARED MEMORY CREATED");
+
+  /* truncate shared memory with required size */
+  ret = ftruncate(socketTask_sm_fd, SM_SIZE);
+  if(ret == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,SOCKET_TASK_ID,"SHARED MEMORY NOT TRUNCATED");
+    return ERROR;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,SOCKET_TASK_ID,"SHARED MEMORY TRUNCATED");
+
+  /*map the shared memory */
+  socketTask_sh_mem = mmap(NULL, SM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED , socketTask_sm_fd, 0);
+  if(socketTask_sh_mem == ERROR)
+  {
+    LOG_TO_QUEUE(logData,LOG_ERR,SOCKET_TASK_ID,"SHARED MEMORY NOT MAPPED");
+    return -1;
+  }
+  LOG_TO_QUEUE(logData,LOG_INFO,SOCKET_TASK_ID, "SHARED MEMORY MAPPED");
+
+  /**** Enter the task status into shared memory *****/
+  socket_status=ALIVE;
+  /* Copy the contents of payload into the shared memory */
+  memcpy((char*)socketTask_sh_mem, (char*)&socket_status, SM_SIZE);
+
+  LOG_STD("[INFO] [SOCKET] INITIALIZED SHARED MEMORY\n");
+
+  return SUCCESS;
+}
+
+/******************************************************************//**********
+ * @brief socket_task_thread()
+ * This thread initializes socket connection
+ *****************************************************************************/
+void socket_task_thread(void) 
+{
+	logTask_Msg_t logData;
+	Task_Status_t socket_status;
+	struct itimerval timer;
+    struct sigaction timer_sig;
+    int ret;
+    struct sockaddr_in addr, peer_addr;
+    int addr_len = sizeof(peer_addr);
+    int i =0;
+    size_t len, read_b;
+    char read_buff[100];
+    char write_buff[100];
+    int server_socket, accepted_soc, opt = 1;
+    
+    LOG_STD("[INFO] [SOCKET] WAITING AT TASK BARRIER\n");
+    /* wait socket task so that other tasks(logger task queue) are synchronized with it*/
+	pthread_barrier_wait(&tasks_barrier);
+	LOG_STD("[INFO] [SOCKET] CROSSED TASK BARRIER\n");
+	
+	LOG_STD("[INFO] [SOCKET] TASK STARTED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET TASK STARTED");	
+	ret= socket_task_init();
+	if(ERROR == ret)
+	{
+		LOG_STD("[ERROR] [SOCKET] TASK INIT: %s\n", strerror(errno));
+		LED_ON();
+		exit(ERROR);
+	}
+	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET TASK INITIALIZED");
+	
+    while(!socketTask_kill)
+    {
+      /* create socket */
+    if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        LOG_STD("[ERROR] [SOCKET] TASK CREATION: %s\n", strerror(errno));
+        LED_ON();
+        exit(ERROR);
+    }
+      LOG_STD("[INFO] [SOCKET] CREATED SUCCESSFULLY\n");
+      LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET CREATED SUCCESSFULLY");
+
+    /* set socket options */
+    if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &(opt), sizeof(opt)))
+    {
+        LOG_STD("[ERROR] [SOCKET] OPTION SETTING: %s\n", strerror(errno));
+        LED_ON();
+        exit(ERROR);
+    }
+    LOG_STD("[INFO] [SOCKET] OPTIONS SET SUCCESSFULLY\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET OPTIONS SET SUCCESSFULLY");
+    
+    /*Set the sockaddr_in structure */
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;  
+    addr.sin_port = htons(PORT_ADR);
+
+    /*bind socket to a address */
+    if((bind(server_socket,(struct sockaddr*)&addr, sizeof(addr))) < 0)
+    {
+        LOG_STD("[ERROR] [SOCKET] SOCKET BINDING: %s\n", strerror(errno));
+        LED_ON();
+        exit(ERROR);
+    }
+    LOG_STD("[INFO] [SOCKET] SOCKET BINDED SUCCESSFULLY\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET BINDED SUCCESSFULLY");
+
+    /* listen for connections*/
+    if(listen(server_socket, 5) < 0)
+    {
+        LOG_STD("[ERROR] [SOCKET] CAN'T LISTEN: %s\n", strerror(errno));
+        LED_ON();
+        exit(ERROR);
+    }
+    
+    /*accept connection */
+    accepted_soc = accept(server_socket, (struct sockaddr*)&peer_addr,
+                (socklen_t*)&addr_len);
+    if(accepted_soc < 0)
+    {
+        LOG_STD("[ERROR] [SOCKET] CAN'T ACCEPT CONNECTION: %s\n", strerror(errno));
+        LED_ON();
+        exit(ERROR);
+    }
+    LOG_STD("[INFO] [SOCKET] ACCEPTED CONNECTION\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"ACCEPTED CONNECTION");
+
+    
+    read_b = read(accepted_soc, &len, sizeof(size_t));
+    if(!(read_b == sizeof(size_t)))
+    {
+        LOG_STD("[ERROR] [SOCKET] INVALID DATA: %s\n", strerror(errno));
+        LED_ON();
+        exit(ERROR);
+    }
+
+    while((read_b = read(accepted_soc, read_buff+i, 100)) < len)
+    {
+        i += read_b;  
+    }
+
+    LOG_STD("[INFO] [SOCKET] MESSAGE RECEIVED FROM CLIENT: %s\n", read_buff);
+
+    float temp;
+    float lux;
+    char tmp_msg[100];
+
+    /* check for API */
+    if((strcmp(read_buff, "is_it_day?")) == 0)
+    {
+        sensor_lux_req(&req_msg);
+        if(req_msg.value < NIGHT_DAY_TH)
+            sprintf(tmp_msg, "%s NO, Its Night!\n", req_msg.task_name);
+        else
+            sprintf(tmp_msg, "%s YES, Its Day!\n", req_msg.task_name);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0); 
+    }
+    else if((strcmp(read_buff, "is_it_night?")) == 0)
+    {
+        if(req_msg.value < NIGHT_DAY_TH)
+            sprintf(tmp_msg, "%s YES, Its Night!\n", req_msg.task_name);
+        else
+            sprintf(tmp_msg, "%s NO, Its Day!\n", req_msg.task_name);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "get_sensor_lux")) == 0)
+    {
+        sensor_lux_req(&req_msg);
+        sprintf(tmp_msg, "%s Luminosity: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "get_temp_cel")) == 0)
+    {
+        get_temp_cel(&req_msg);
+        sprintf(tmp_msg, "%s Temperature: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "get_temp_fah")) == 0)
+    {
+        get_temp_fah(&req_msg);
+        sprintf(tmp_msg, "%s Temperature: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "get_temp_kel")) == 0)
+    {
+        get_temp_kel(&req_msg);
+        sprintf(tmp_msg, "%s Temperature: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "LED_ON")) == 0)
+    {
+        LED_ON();
+        sprintf(tmp_msg, "[LED_Task] USR_LED0 = ON\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "LED_OFF")) == 0)
+    {
+        LED_OFF();
+        sprintf(tmp_msg, "[LED_Task] USR_LED0 = OFF\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+    else if((strcmp(read_buff, "kill_threads")) == 0)
+    {
+        sprintf(tmp_msg, "[Main_Task] Killing all threads\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+        signal_handler(SIGUSR1);
+    }    
+    else
+    {
+        sprintf(tmp_msg, "[Socket_Task] Incorrect API\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+
+    close(accepted_soc);
+    close(server_socket);
+    LOG_STD("[INFO] [SOCKET] CLOSED CONNECTION\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"CLOSED CONNECTION");
+    }
+    
+	/*********** KILL Signal Received ***********/
+	LOG_STD("[INFO] SOCKET TASK KILL SIGNAL RECEIVED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"KILL SIGNAL RECEIVED");
+	/* Update task status in shared memory */
+	socket_status=DEAD;
+	/* Copy the contents of payload into the share memory */
+	memcpy((char*)socketTask_sh_mem, (char*)&socket_status, SM_SIZE);
+	
+    pthread_exit(NULL);
+}
+
+/**
+ * @file unittest_light.c
+ * @brief This file contains unit test functions for light sensor.
+ *
+ * @author Kovuru Nagarjuna Reddy
+ * @date March 17, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//**********************************************************************************
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include <pthread.h>
+#include "main_task.h"
+#include "logger_task.h"
+#include "light_task.h"
+#include "socket_task.h"
+#include "led_task.h"
+#include "temp_task.h"
+
+
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************************
+ * @brief test_light_regCheck
+ * unit test function to test all the light sensor register functions
+ *****************************************************************************/
+void test_light_regCheck(void **state)
+{
+	uint8_t  data;
+	int8_t ret;
+	
+	/******* Test Control register *********/
+	data=0xFF;
+	ret=write_control_reg(data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	
+	ret=read_control_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0xFF);
+	
+	/******* Test Timing register *********/
+	data=0xFF;
+	ret=write_timing_reg(data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	
+	ret=read_timing_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0xFF);
+	
+	/******* Test tlow register *********/
+	data=0xFF;
+	ret=write_intthresh_low_reg(data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	
+	ret=read_intthresh_low_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0xFF);
+	
+	/******* Test thigh register *********/
+	data=0xFF;
+	ret=write_intthresh_high_reg(data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	
+	ret=read_intthresh_high_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0xFF);
+	
+	/******* Test intcontrol register *********/
+	data=0xFF;
+	ret=write_intcontrol_reg(data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	
+	ret=read_intcontrol_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0xFF);
+	
+	/******* Test id register *********/
+	ret=read_id_reg(&data);
+	assert_int_equal(ret, EXIT_SUCCESS);
+	assert_int_equal(data, 0x50);
+}
+
+/**
+ * @file unittest_main.c
+ * @brief This file contains main() which calls all the unit test functions.
+ *
+ * @author Kovuru Nagarjuna Reddy
+ * @date March 17, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//**********************************************************************************
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include <pthread.h>
+#include "main_task.h"
+#include "logger_task.h"
+#include "light_task.h"
+#include "socket_task.h"
+#include "led_task.h"
+#include "temp_task.h"
+
+
+//***********************************************************************************
+// Global Variables
+//**********************************************************************************
+pthread_barrier_t tasks_barrier;
+pthread_barrier_t init_barrier;
+int logTask_kill = 0;
+
+int status_thread_kill = 0;
+int tempTask_kill = 0;
+int lightTask_kill = 0;
+int socketTask_kill = 0;
+
+const char * taskId_nameString[MAIN_TASK_ID+1] = { "LOGGER_TASK_ID", "TEMP_TASK_ID", \
+	"LIGHT_TASK_ID", "SOCKET_TASK_ID", "MAIN_TASK_ID"};
+
+
+
+//***********************************************************************************
+//Function Prototypes
+//***********************************************************************************
+extern void test_light_regCheck(void **state);
+extern void test_temp_regCheck(void **state);
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************************
+ * @brief main
+ * this function calls all the unit testing functions
+ *****************************************************************************/
+int main(int argc, char **argv)
+{
+  const struct CMUnitTest tests[] = {
+    cmocka_unit_test(test_light_regCheck)
+    cmocka_unit_test(test_temp_regCheck)
+  };
+
+  return cmocka_run_group_tests(tests, NULL, NULL);
+}
+
+
+
+
+
+
+/**
+ * @file main_time.c
+ * @brief This file contains timer function to get the real time.
+ 
+ * @author Kovuru Nagarjuna Reddy
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <sys/time.h>
+#include <time.h>
+#include <string.h>
+#include "my_time.h"
+#include "main_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+#define GET_TIMEOFDAY(x,y)	gettimeofday(x,y)
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//****
+ * @brief get_time_string()
+ * This function gets the current time and converts into a string to be 
+ * printed in logger message 
+ * @timestring: Pointer to buffer to store the time as a string
+ * @len       : length of buffer
+ * @return: status(SUCCESS/FAILURE)
+ ***********************************************************************/
+int get_time_string(char *timeString, const int len)
+{
+  char time_string[20] = {0};
+  struct timespec current_timeSpec;
+  struct tm *current_time;
+
+  /* get the current time */
+  clock_gettime( CLOCK_REALTIME, &current_timeSpec);
+  current_time = localtime( &current_timeSpec );
+  /* store the time in buffer as a string */
+  snprintf(time_string,sizeof(time_string),"%02d:%02d:%02d", \
+        current_time->tm_hour, current_time->tm_min, current_time->tm_sec);
+  memcpy(timeString,time_string, sizeof(time_string) );
+ 
+  return SUCCESS;
+}
+/**
+ * @file led_task.c
+ * @brief The implementation file for USR LED switching functions
+ *
+ * This implementation file provides the function definitions for
+ * switching USR LED0 on Beaglebone Green.
+ *
+ * @author Vipul Gupta
+ * @date 17 March 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include "led_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief LED_ON()
+ * This function switch ON the LED present on board
+ *****************************************************************************/
+void LED_ON(void)
+{
+	FILE * fptr = fopen(LED0_PATH, "w+");
+	
+	if(fptr == NULL)
+		return;
+	else
+	{
+		fputc('1', fptr);
+		fclose(fptr);
+		return;	
+	}
+}
+
+/******************************************************************//**********
+ * @brief LED_OFF()
+ * This function switch OFF the LED present on board
+ *****************************************************************************/
+void LED_OFF(void)
+{
+	FILE * fptr = fopen(LED0_PATH, "w+");
+	
+	if(fptr == NULL)
+		return;
+	else
+	{
+		fputc('0', fptr);
+		fclose(fptr);
+		return;	
+	}
+}
+
+/******************************************************************//**********
+ * @brief LED_INIT()
+ * This function switch initializes the LED present on board
+ *****************************************************************************/
+void LED_INIT(void)
+{
+	FILE * fptr = fopen(LED0_INITPATH, "w+");
+	
+	if(fptr == NULL)
+		return;
+	else
+	{
+		fprintf(fptr, "none");
+		fclose(fptr);
+		return;	
+	}	
+}
+
+
+#include <string.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
+
+
+#define PORT_ADR    2000
+#define IP_ADR      "127.0.0.1" /* Loppback IP Address*/
+
+int main()
+{
+	int client_socket = 0;
+	struct sockaddr_in serv_addr = {0};
+	size_t len, sent_b;
+	
+	char in_buff[100];
+	char out_buff[100];
+
+	
+
+	while(1)
+	{
+	 	
+		/* create socket */
+		if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+		{
+			printf("[Client] [ERROR] Socket creation Error\n");
+			return -1;
+		}
+		else
+			// printf("[Client] Socket Created Successfully\n");
+
+		/* Fill the socket address structure */
+		serv_addr.sin_family = AF_INET;
+		serv_addr.sin_port = htons(PORT_ADR);
+		  
+		/* convert the IP ADDR to proper format */
+		if(inet_pton(AF_INET, IP_ADR, &serv_addr.sin_addr)<=0) 
+		{
+			printf("[Client] [ERROR] Address Conversion Error\n");
+			return -1;	
+		}
+
+		printf("List of APIs available:\n");
+		printf(" get_temp_cel\t -Temperature in Celsius\n");
+		printf(" get_temp_fah\t -Temperature in Fahrenheit\n");
+		printf(" get_temp_kel\t -Temperature in Kelvin\n");
+		printf(" get_sensor_lux\t -Light Sensor Luminosity\n");
+		printf(" is_it_day?\t -Day or Night\n");
+		printf(" is_it_night?\t -Day or Night\n");
+		printf(" LED_ON\t\t -Turn ON USR LED\n");
+		printf(" LED_OFF\t -Turn ON USR LED\n");
+		printf(" kill_threads\t -Kill all threads\n");
+		printf(" \n");
+
+		printf("[Client] Enter the API: ");
+	 	fgets(in_buff, 100, stdin);
+
+	 	len = strlen (in_buff);
+		if (in_buff[len - 1] == '\n')
+			in_buff[len - 1] = '\0';
+
+		/* connect the socket before sending the data */
+  		if(connect(client_socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  		{
+    		printf("[Client] [ERROR] Connection Failed \n");
+    		return -1;
+  		}
+
+  		/* Size of the payload */
+  		send(client_socket, &len ,sizeof(size_t), 0);
+  		/* Send actual message request (API) */
+  		sent_b = send(client_socket, (void *)&in_buff, sizeof(in_buff), 0);
+
+  		if(sent_b < sizeof(in_buff))
+  		{
+    		printf("[Client] [ERROR] Complete data not sent\n");
+    		return -1;
+ 		}
+
+ 		printf("[Client] Message sent to Server: %s\n", in_buff);
+
+ 		read(client_socket, out_buff, 100);
+
+ 		printf("[Client] Message received: %s\n\n", out_buff);
+
+ 		close(client_socket);
+
+ 		memset(out_buff, 0, sizeof(out_buff));
+
+ 		sleep(1);
+        
+	}
+
+	
+  
+  	return 0;
+ 
+ }
