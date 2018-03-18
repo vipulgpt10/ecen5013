@@ -71,6 +71,7 @@ extern void socket_task_thread();
 
 /* array of function pointers*/
 static void (*thread_fun[NUM_THREADS]) = { logger_task_thread, status_read_thread, temperature_task_thread, light_task_thread, socket_task_thread };
+timer_t main_timerid;
 
 //***********************************************************************************
 //Function Definitions

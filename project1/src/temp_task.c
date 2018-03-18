@@ -315,6 +315,7 @@ int temp_task_init(void)
 void temp_timer_handler(int signal)
 {
   float temp;
+  logTask_Msg_t logData;
 
   /***** Read the sensor and display****/
   LOG_STD("[INFO] [TEMP_HANDLER] READING TEMPERATURE SENSOR\n" );
