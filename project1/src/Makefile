@@ -1,7 +1,7 @@
 include sources.mk
 
 CC:=gcc
-CFLAGS:= -g3
+CFLAGS:= 
 LDFLAGS:= -lpthread -lrt -lm -lmraa
 INCLUDES:= -I ../include/common -I ../include/bbg #-I ../include/cmocka    
 
