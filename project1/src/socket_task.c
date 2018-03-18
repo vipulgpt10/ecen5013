@@ -28,7 +28,6 @@ extern int socketTask_kill;
 /* task barrier to synchronize tasks*/
 extern pthread_barrier_t tasks_barrier;
 extern mqd_t logTask_mq_d;
-
 API_message_t req_msg;
 
 //***********************************************************************************
@@ -77,7 +76,7 @@ int socket_task_init(void)
   /* Copy the contents of payload into the shared memory */
   memcpy((char*)socketTask_sh_mem, (char*)&socket_status, SM_SIZE);
 
-  LOG_STD("[INFO] SOCKET TASK INITIALIZED SHARED MEMORY\n");
+  LOG_STD("[INFO] [SOCKET] INITIALIZED SHARED MEMORY\n");
 
   return SUCCESS;
 }
@@ -101,39 +100,44 @@ void socket_task_thread(void)
     char write_buff[100];
     int server_socket, accepted_soc, opt = 1;
     
+    LOG_STD("[INFO] [SOCKET] WAITING AT TASK BARRIER\n");
     /* wait socket task so that other tasks(logger task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
+	LOG_STD("[INFO] [SOCKET] CROSSED TASK BARRIER\n");
 	
-	LOG_STD("[INFO] SOCKET TASK STARTED\n");
+	LOG_STD("[INFO] [SOCKET] TASK STARTED\n");
 	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET TASK STARTED");	
 	ret= socket_task_init();
 	if(ERROR == ret)
 	{
-		LOG_STD("[ERROR] SOCKET TASK INIT: %s\n", strerror(errno));
+		LOG_STD("[ERROR] [SOCKET] TASK INIT: %s\n", strerror(errno));
+		LED_ON();
 		exit(ERROR);
 	}
 	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET TASK INITIALIZED");
 	
-
     while(!socketTask_kill)
     {
-      
       /* create socket */
     if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-        // printf("[Server] [ERROR] Socket creation Error\n");
-        // return -1;
+        LOG_STD("[ERROR] [SOCKET] TASK CREATION: %s\n", strerror(errno));
+        LED_ON();
+        return ERROR;
     }
-    else
-      // printf("[Server] Socket Created Successfully\n");
+      LOG_STD("[INFO] [SOCKET] CREATED SUCCESSFULLY\n");
+      LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET CREATED SUCCESSFULLY");
 
     /* set socket options */
     if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &(opt), sizeof(opt)))
     {
-        // printf("[Server] [ERROR] Socket options set error\n");
-        // return -1;
+        LOG_STD("[ERROR] [SOCKET] OPTION SETTING: %s\n", strerror(errno));
+        LED_ON();
+        return ERROR;
     }
-
+    LOG_STD("[INFO] [SOCKET] OPTIONS SET SUCCESSFULLY\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET OPTIONS SET SUCCESSFULLY");
+    
     /*Set the sockaddr_in structure */
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;  
@@ -142,17 +146,19 @@ void socket_task_thread(void)
     /*bind socket to a address */
     if((bind(server_socket,(struct sockaddr*)&addr, sizeof(addr))) < 0)
     {
-        // printf("[Server] [ERROR] Bind socket Error\n");
-        // return -1;
+        LOG_STD("[ERROR] [SOCKET] SOCKET BINDING: %s\n", strerror(errno));
+        LED_ON();
+        return ERROR;
     }
-    else
-      // printf("[Server] Socket binded Successfully\n");
+    LOG_STD("[INFO] [SOCKET] SOCKET BINDED SUCCESSFULLY\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET BINDED SUCCESSFULLY");
 
     /* listen for connections*/
     if(listen(server_socket, 5) < 0)
     {
-        // printf("[Server] [ERROR] Can't listen connection\n");
-        // return -1;
+        LOG_STD("[ERROR] [SOCKET] CAN'T LISTEN: %s\n", strerror(errno));
+        LED_ON();
+        return ERROR;
     }
     
     /*accept connection */
@@ -160,16 +166,20 @@ void socket_task_thread(void)
                 (socklen_t*)&addr_len);
     if(accepted_soc < 0)
     {
-        // printf("[Server] [ERROR] Can't accept connection\n");
-        // return -1;
+        LOG_STD("[ERROR] [SOCKET] CAN'T ACCEPT CONNECTION: %s\n", strerror(errno));
+        LED_ON();
+        return ERROR;
     }
+    LOG_STD("[INFO] [SOCKET] ACCEPTED CONNECTION\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"ACCEPTED CONNECTION");
 
     
     read_b = read(accepted_soc, &len, sizeof(size_t));
     if(!(read_b == sizeof(size_t)))
     {
-        // printf("[Server] [ERROR] Invalid data\n");
-        // return -1;
+        LOG_STD("[ERROR] [SOCKET] INVALID DATA: %s\n", strerror(errno));
+        LED_ON();
+        return ERROR;
     }
 
     while((read_b = read(accepted_soc, read_buff+i, 100)) < len)
@@ -177,22 +187,21 @@ void socket_task_thread(void)
         i += read_b;  
     }
 
-    printf("[Server] Message received from Client: %s\n", read_buff);
+    LOG_STD("[INFO] [SOCKET] MESSAGE RECEIVED FROM CLIENT: %s\n", read_buff);
 
     float temp;
     float lux;
     char tmp_msg[100];
 
+    /* check for API */
     if((strcmp(read_buff, "is_it_day?")) == 0)
     {
-
         sensor_lux_req(&req_msg);
         if(req_msg.value < NIGHT_DAY_TH)
             sprintf(tmp_msg, "%s NO, Its Night!\n", req_msg.task_name);
         else
             sprintf(tmp_msg, "%s YES, Its Day!\n", req_msg.task_name);
-        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
-     
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0); 
     }
     else if((strcmp(read_buff, "is_it_night?")) == 0)
     {
@@ -240,7 +249,6 @@ void socket_task_thread(void)
     }
     else if((strcmp(read_buff, "kill_threads")) == 0)
     {
-        
         sprintf(tmp_msg, "[Main_Task] Killing all threads\n");
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
         signal_handler(SIGUSR1);
@@ -251,16 +259,15 @@ void socket_task_thread(void)
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
 
-
     close(accepted_soc);
-
     close(server_socket);
+    LOG_STD("[INFO] [SOCKET] CLOSED CONNECTION\n");
+    LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"CLOSED CONNECTION");
     }
-
-    LOG_STD("[INFO] USR1:SOCKET THREAD KILL SIGNAL RECEIVED\n");
     
 	/*********** KILL Signal Received ***********/
 	LOG_STD("[INFO] SOCKET TASK KILL SIGNAL RECEIVED\n");
+	LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"KILL SIGNAL RECEIVED");
 	/* Update task status in shared memory */
 	socket_status=DEAD;
 	/* Copy the contents of payload into the share memory */
