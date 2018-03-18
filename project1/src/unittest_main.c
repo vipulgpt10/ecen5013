@@ -18,6 +18,27 @@
 #include "main_task.h"
 #include "logger_task.h"
 #include "light_task.h"
+#include "socket_task.h"
+#include "led_task.h"
+#include "temp_task.h"
+
+
+//***********************************************************************************
+// Global Variables
+//**********************************************************************************
+pthread_barrier_t tasks_barrier;
+pthread_barrier_t init_barrier;
+int logTask_kill = 0;
+
+int status_thread_kill = 0;
+int tempTask_kill = 0;
+int lightTask_kill = 0;
+int socketTask_kill = 0;
+
+const char * taskId_nameString[MAIN_TASK_ID+1] = { "LOGGER_TASK_ID", "TEMP_TASK_ID", \
+	"LIGHT_TASK_ID", "SOCKET_TASK_ID", "MAIN_TASK_ID"};
+
+
 
 //***********************************************************************************
 //Function Prototypes
@@ -36,8 +57,14 @@ int main(int argc, char **argv)
 {
   const struct CMUnitTest tests[] = {
     cmocka_unit_test(test_light_regCheck),
-    cmocka_unit_test(test_temp_regCheck),
+    cmocka_unit_test(test_temp_regCheck)
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);
 }
+
+void signal_handler(int signal)
+{
+
+}
+
