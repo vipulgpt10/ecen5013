@@ -30,6 +30,7 @@ extern pthread_barrier_t tasks_barrier;
 extern pthread_barrier_t init_barrier;
 extern mqd_t logTask_mq_d;
 timer_t light_timerid;
+float prev_lux;
 
 //***********************************************************************************
 //Function Definitions
@@ -291,6 +292,8 @@ int light_task_init(void)
 
   LOG_STD("[INFO] [LIGHT] INITIALIZED SHARED MEMORY\n");
 
+  read_sensor_lux(&prev_lux)
+
   return SUCCESS;
 }
 
@@ -311,6 +314,15 @@ void light_timer_handler(int signal)
   read_sensor_lux(&lux);
   LOG_STD("[INFO] [LIGHT_HANDLER] SENSOR LUX: %f\n", lux );
   LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SENSOR LUX: %f\n", lux);
+
+  if((prev_lux < 15.0 && lux >= 15.0) || (prev_lux > 15.0 && lux <= 15.0))
+  {
+  	LED_ON();
+  	LOG_STD("[INFO] [LIGHT_HANDLER] SUDDEN CHANGE IN LUMINOSITY!\n");
+  	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SUDDEN CHANGE IN LUMINOSITY!");
+  }
+  prev_lux = lux;
+
 }
 
 /******************************************************************//**********
