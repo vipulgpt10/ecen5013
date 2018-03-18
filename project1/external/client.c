@@ -50,10 +50,11 @@ int main()
 		printf(" get_temp_fah\t -Temperature in Fahrenheit\n");
 		printf(" get_temp_kel\t -Temperature in Kelvin\n");
 		printf(" get_sensor_lux\t -Light Sensor Luminosity\n");
-		printf(" is_it_day?\n");
-		printf(" is_it_night?\n");
-		printf(" LED_ON\n");
-		printf(" LED_OFF\n");
+		printf(" is_it_day?\t -Day or Night\n");
+		printf(" is_it_night?\t -Day or Night\n");
+		printf(" LED_ON\t\t -Turn ON USR LED\n");
+		printf(" LED_OFF\t -Turn ON USR LED\n");
+		printf(" kill_threads\t -Kill all threads\n");
 		printf(" \n");
 
 		printf("[Client] Enter the API: ");

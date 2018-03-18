@@ -15,6 +15,7 @@
 // Include files
 //***********************************************************************************
 #include "i2c_wrapper.h"
+#include "main_task.h"
 #include <math.h>
 #include <pthread.h>
 
@@ -142,6 +143,14 @@ int8_t read_id_reg(uint8_t * data);
  *****************************************************************************/
 int8_t read_sensor_lux(float * data);
 
+/******************************************************************//**********
+ * @brief light_start_test()
+ * This function checks the ID register and return 0 on success and -1 
+ * failure.
+ *****************************************************************************/
+int light_start_test(void);
+
+int sensor_lux_req(API_message_t * ptr);
 
 /******************************************************************//**********
  * @brief light_task_thread()

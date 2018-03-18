@@ -221,6 +221,29 @@ int8_t read_sensor_lux(float * data)
 }
 
 /******************************************************************//**********
+ * @brief light_start_test()
+ * This function checks the ID register and return 0 on success and -1 
+ * failure.
+ *****************************************************************************/
+int light_start_test(void)
+{
+	uint8_t id;
+	read_id_reg(&id);
+	if(id != 0x50)		/* Factory device ID */
+		return ERROR;
+	return SUCCESS;
+}
+
+/* Message APIs */
+int sensor_lux_req(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Light_Task]");
+	read_sensor_lux(&(ptr->value));
+	strcpy(ptr->msg, "Lux");
+	return 0;
+}
+
+/******************************************************************//**********
  * @brief light_task_init()
  * This function creates shared memory to share the task status.
  * Shared Memory: To share light task's status(DEAD/ALIVE) with main_task.
@@ -300,6 +323,7 @@ void light_task_thread(void)
 	Task_Status_t light_status;
 	struct itimerval timer;
     int ret;
+
 	struct sigevent sev;
     struct itimerspec its;
     long long freq_nanosecs;
@@ -307,6 +331,7 @@ void light_task_thread(void)
     struct sigaction sa;
 
     LOG_STD("[INFO] [LIGHT] WAITING AT TASK BARRIER\n");
+
 	/* wait light task so that other tasks(logger task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
 	LOG_STD("[INFO] [LIGHT] CROSSED TASK BARRIER\n");
@@ -336,6 +361,7 @@ void light_task_thread(void)
 	sem_wait(sem_start);
 
     /************** POSIX Timer setup *******/
+
 	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SETTING TIMER HANDLER");
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = light_timer_handler;

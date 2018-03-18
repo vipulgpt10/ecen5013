@@ -30,6 +30,8 @@
 #define PORT_ADR    2000
 /* shared memory name and size */
 #define SOCKETTASK_SM_NAME	   "socketTask_sharedMemory"
+
+#define NIGHT_DAY_TH	(15.0)
 //***********************************************************************************
 // Global Variables 
 //***********************************************************************************

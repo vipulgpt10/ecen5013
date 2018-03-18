@@ -29,6 +29,8 @@ extern int socketTask_kill;
 extern pthread_barrier_t tasks_barrier;
 extern mqd_t logTask_mq_d;
 
+API_message_t req_msg;
+
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -175,7 +177,6 @@ void socket_task_thread(void)
         i += read_b;  
     }
 
-    printf("==== SERVER thread ++++\n");
     printf("[Server] Message received from Client: %s\n", read_buff);
 
     float temp;
@@ -185,61 +186,71 @@ void socket_task_thread(void)
     if((strcmp(read_buff, "is_it_day?")) == 0)
     {
 
-        read_sensor_lux(&lux);
-        printf("Function call in light thread!\n");
-        sprintf(tmp_msg, "Sensor LUX = %f \n", lux);
+        sensor_lux_req(&req_msg);
+        if(req_msg.value < NIGHT_DAY_TH)
+            sprintf(tmp_msg, "%s NO, Its Night!\n", req_msg.task_name);
+        else
+            sprintf(tmp_msg, "%s YES, Its Day!\n", req_msg.task_name);
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
      
     }
     else if((strcmp(read_buff, "is_it_night?")) == 0)
     {
-        read_sensor_lux(&lux);
-        printf("Function call in light thread!\n");
-        sprintf(tmp_msg, "Sensor LUX = %f \n", lux);
+        if(req_msg.value < NIGHT_DAY_TH)
+            sprintf(tmp_msg, "%s YES, Its Night!\n", req_msg.task_name);
+        else
+            sprintf(tmp_msg, "%s NO, Its Day!\n", req_msg.task_name);
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
     else if((strcmp(read_buff, "get_sensor_lux")) == 0)
     {
-        read_sensor_lux(&lux);
-        printf("Function call in light thread!\n");
-        sprintf(tmp_msg, "Sensor LUX = %f \n", lux);
+        sensor_lux_req(&req_msg);
+        sprintf(tmp_msg, "%s Luminosity: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
     else if((strcmp(read_buff, "get_temp_cel")) == 0)
     {
-        read_temp_celsius(&temp);
-        printf("Function call in temperature thread!\n");
-        sprintf(tmp_msg, "Temperature = %f deg C\n", temp);
+        get_temp_cel(&req_msg);
+        sprintf(tmp_msg, "%s Temperature: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
     else if((strcmp(read_buff, "get_temp_fah")) == 0)
     {
-        read_temp_fahrenheit(&temp);
-        printf("Function call in temperature thread!\n");
-        sprintf(tmp_msg, "Temperature = %f deg F\n", temp);
+        get_temp_fah(&req_msg);
+        sprintf(tmp_msg, "%s Temperature: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
     else if((strcmp(read_buff, "get_temp_kel")) == 0)
     {
-        read_temp_kelvin(&temp);
-        printf("Function call in temperature thread!\n");
-        sprintf(tmp_msg, "Temperature = %f deg K\n", temp);
+        get_temp_kel(&req_msg);
+        sprintf(tmp_msg, "%s Temperature: %f %s\n", req_msg.task_name, req_msg.value, req_msg.msg);
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
     else if((strcmp(read_buff, "LED_ON")) == 0)
     {
         LED_ON();
-        sprintf(tmp_msg, "USR_LED0 = ON\n");
+        sprintf(tmp_msg, "[LED_Task] USR_LED0 = ON\n");
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
     else if((strcmp(read_buff, "LED_OFF")) == 0)
     {
         LED_OFF();
-        sprintf(tmp_msg, "USR_LED0 = OFF\n");
+        sprintf(tmp_msg, "[LED_Task] USR_LED0 = OFF\n");
         send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
     }
+    else if((strcmp(read_buff, "kill_threads")) == 0)
+    {
         
-    printf("==== SERVER thread ++++\n");
+        sprintf(tmp_msg, "[Main_Task] Killing all threads\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+        signal_handler(SIGUSR1);
+    }    
+    else
+    {
+        sprintf(tmp_msg, "[Socket_Task] Incorrect API\n");
+        send(accepted_soc, tmp_msg, sizeof(tmp_msg), 0);
+    }
+
 
     close(accepted_soc);
 

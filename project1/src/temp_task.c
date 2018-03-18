@@ -214,6 +214,47 @@ int8_t read_thigh_celsius(float * data)
 }
 
 /******************************************************************//**********
+ * @brief temp_start_test()
+ * This function checks the Config register default value and return 0
+ * on success and -1 on failure.
+ *****************************************************************************/
+int temp_start_test(void)
+{
+	uint16_t check;
+
+	read_config_reg(&check);
+	if(check != 0x60a0)		/* Default value */
+		return ERROR;
+	
+	return SUCCESS;
+
+}
+
+int get_temp_cel(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Temperature_Task]");
+	read_temp_celsius(&(ptr->value));
+	strcpy(ptr->msg, "Degree Celsius");
+	return 0;
+}
+
+int get_temp_kel(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Temperature_Task]");
+	read_temp_kelvin(&(ptr->value));
+	strcpy(ptr->msg, "Degree Kelvin");
+	return 0;
+}
+
+int get_temp_fah(API_message_t * ptr)
+{
+	strcpy(ptr->task_name, "[Temperature_Task]");
+	read_temp_fahrenheit(&(ptr->value));
+	strcpy(ptr->msg, "Degree Fahrenheit");
+	return 0;
+}
+
+/******************************************************************//**********
  * @brief temp_task_init()
  * This function creates shared memory to share the task status.
  * Shared Memory: To share temp task's status(DEAD/ALIVE) with main_task.
@@ -303,6 +344,7 @@ void temperature_task_thread(void)
 	struct itimerval timer;
     struct sigaction timer_sig;
     int ret;
+
 	struct sigevent sev;
     struct itimerspec its;
     long long freq_nanosecs;
@@ -310,6 +352,8 @@ void temperature_task_thread(void)
     struct sigaction sa;
 	
 	LOG_STD("[INFO] [TEMP] WAITING AT TASK BARRIER \n");
+
+
 	/* wait temp task so that other tasks(temp task queue) are synchronized with it*/
 	pthread_barrier_wait(&tasks_barrier);
 	LOG_STD("[INFO] [TEMP] CROSSED TASK BARRIER \n");
@@ -334,6 +378,7 @@ void temperature_task_thread(void)
 	sem_wait(sem_start);
 
     /************** POSIX Timer setup *******/
+
 	LOG_TO_QUEUE(logData,LOG_INFO,TEMP_TASK_ID,"SETTING TIMER HANDLER");
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = temp_timer_handler;
@@ -351,7 +396,6 @@ void temperature_task_thread(void)
 	LOG_STD("[INFO] [TEMP] POSIX TIMER SETUP DONE\n");
     
     while(!tempTask_kill);
-    
 	/*********** KILL Signal Received ***********/
 	LOG_STD("[INFO] [TEMP] TASK KILL SIGNAL RECEIVED\n");
 	timer_delete(temp_timerid);

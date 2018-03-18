@@ -72,7 +72,6 @@ extern void socket_task_thread();
 /* array of function pointers*/
 static void (*thread_fun[NUM_THREADS]) = { logger_task_thread, status_read_thread, temperature_task_thread, light_task_thread, socket_task_thread };
 
-timer_t main_timerid;
 //***********************************************************************************
 //Function Definitions
 //***********************************************************************************
@@ -158,6 +157,7 @@ void status_read_thread(void)
   struct itimerval timer;
   logTask_Msg_t logData;
   int ret;
+
 	struct sigevent sev;
     struct itimerspec its;
     long long freq_nanosecs;
@@ -264,13 +264,50 @@ void status_read_thread(void)
   pthread_exit(NULL);
 }
 
+int system_test(void)
+{
+	Task_Status_t logger_status, light_status, temp_status, socket_status;
+
+	/******** Read Shared memories of all the tasks to get the statusses *****/
+	/* read status from logger task shared memory */
+	memcpy((char*)&logger_status,(char*)logTask_sh_mem,SM_SIZE);
+	/* read status from light task shared memory */
+	memcpy((char*)&light_status,(char*)lightTask_sh_mem,SM_SIZE);
+	/* read status from logger task shared memory */
+	memcpy((char*)&temp_status,(char*)tempTask_sh_mem,SM_SIZE);
+	/* read status from light task shared memory */
+	memcpy((char*)&socket_status,(char*)socketTask_sh_mem,SM_SIZE);
+
+	/* Start-up tests */
+
+	if(light_start_test())
+	{
+		/* Enter log message */
+		LED_ON();
+		return ERROR;
+	}
+	if(temp_start_test())
+	{
+		/* Enter log message */
+		LED_ON();
+		return ERROR;
+	}
+	if(!(logger_status & light_status & temp_status & socket_status))
+	{
+		LED_ON();
+		return ERROR;
+	}
+
+	return SUCCESS;
+}
+
 /******************************************************************//**********
  * @brief main()
  * This function creates creates multiple threads such as logger_task, 
  * temperature_task, light_task, socket_task & status read and 
  * waits for its completion
  *****************************************************************************/
-int main( int argc, char** argv )
+int main(int argc, char** argv)
 {
   pthread_t threads[NUM_THREADS];
   logTask_Msg_t logData;
@@ -280,7 +317,9 @@ int main( int argc, char** argv )
 
   /* create barrier for all threads and main */
   pthread_barrier_init( &tasks_barrier, NULL, NUM_THREADS+1);
+
   pthread_barrier_init( &init_barrier, NULL, 3); //light+temp+main
+
 
   LED_INIT();
   LED_OFF();
@@ -312,12 +351,24 @@ int main( int argc, char** argv )
 	sem_start = sem_open(SEM_START, O_CREAT, 0660, 0);
 
   pthread_barrier_wait(&init_barrier);
+
 	
 	LOG_STD("[INFO] [MAIN] START UP TEST\n");
 	//////startup here ////
 
-	sem_post(sem_start);
-	sem_post(sem_start);
+	ret = system_test();
+	if(ret == ERROR)
+	{
+		/* LOG message - Start up test failed */
+    signal_handler(SIGUSR1);  //kill all threads
+		return ERROR;
+	}
+	else if(ret == SUCCESS)
+	{
+		LOG_STD("[INFO] SYSTEM TEST SUCCESS! \n");
+		sem_post(sem_start);
+		sem_post(sem_start);
+	}
 
   /****** Signal Handler Linking to SIGUSR1 & SIGUSR2 *******/
   user_sig.sa_handler= &signal_handler;

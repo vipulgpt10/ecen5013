@@ -49,6 +49,13 @@ typedef enum
   ALIVE
 }Task_Status_t;
 
+typedef struct api_message
+{
+	char task_name[20];
+	float value;
+	char msg[20]; 
+}API_message_t;
+
 //***********************************************************************************
 // Global Variables
 //***********************************************************************************
@@ -57,6 +64,9 @@ typedef enum
 //***********************************************************************************
 // Function Prototypes
 //***********************************************************************************
+
+void signal_handler(int signal);
+
 /******************************************************************//**********
  * @brief main()
  * This function creates creates multiple threads such as logger_task, 

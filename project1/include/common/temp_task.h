@@ -15,6 +15,7 @@
 // Include files
 //***********************************************************************************
 #include "i2c_wrapper.h"
+#include "main_task.h"
 #include <pthread.h>
 
 //***********************************************************************************
@@ -86,6 +87,19 @@ int8_t read_tlow_celsius(float * data);
  * @data: pointer to store the read data
  *****************************************************************************/
 int8_t read_thigh_celsius(float * data);
+
+/******************************************************************//**********
+ * @brief temp_start_test()
+ * This function checks the Config register default value and return 0
+ * on success and -1 on failure.
+ *****************************************************************************/
+int temp_start_test(void);
+
+int get_temp_cel(API_message_t * ptr);
+
+int get_temp_kel(API_message_t * ptr);
+
+int get_temp_fah(API_message_t * ptr);
 
 /******************************************************************//**********
  * @brief temperature_task_thread()
