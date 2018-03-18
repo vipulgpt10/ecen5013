@@ -181,12 +181,11 @@ void logger_task_thread(void)
     exit(ERROR);
   }
 
-  printf("Logger thread: before barrier\n");
-
+  LOG_STD("[INFO] [LOGGER] WAITING AT BARRIER\n");
   /* wait logger task so that other tasks are synchronized with it*/
   pthread_barrier_wait(&tasks_barrier);
-
-  printf("Logger thread: after barrier\n");
+ LOG_STD("[INFO] [LOGGER] CROSSED BARRIER\n");
+ 
   /* start logger queue processing */
   logger_task_process_MQ();
 

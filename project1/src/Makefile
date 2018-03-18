@@ -3,7 +3,7 @@ include sources.mk
 CC:=gcc
 CFLAGS:= -g3
 LDFLAGS:= -lpthread -lrt -lm -lmraa
-INCLUDES:= -I ../include/common -I ../include/bbg ../include/cmocka
+INCLUDES:= -I ../include/common -I ../include/bbg #../include/cmocka
 
 OUTPUT_FILE_EXT:=.out
 OUTPUT_FILE:= project1$(OUTPUT_FILE_EXT)
