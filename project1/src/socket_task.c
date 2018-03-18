@@ -123,7 +123,7 @@ void socket_task_thread(void)
     {
         LOG_STD("[ERROR] [SOCKET] TASK CREATION: %s\n", strerror(errno));
         LED_ON();
-        return ERROR;
+        exit(ERROR);
     }
       LOG_STD("[INFO] [SOCKET] CREATED SUCCESSFULLY\n");
       LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET CREATED SUCCESSFULLY");
@@ -133,7 +133,7 @@ void socket_task_thread(void)
     {
         LOG_STD("[ERROR] [SOCKET] OPTION SETTING: %s\n", strerror(errno));
         LED_ON();
-        return ERROR;
+        exit(ERROR);
     }
     LOG_STD("[INFO] [SOCKET] OPTIONS SET SUCCESSFULLY\n");
     LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET OPTIONS SET SUCCESSFULLY");
@@ -148,7 +148,7 @@ void socket_task_thread(void)
     {
         LOG_STD("[ERROR] [SOCKET] SOCKET BINDING: %s\n", strerror(errno));
         LED_ON();
-        return ERROR;
+        exit(ERROR);
     }
     LOG_STD("[INFO] [SOCKET] SOCKET BINDED SUCCESSFULLY\n");
     LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"SOCKET BINDED SUCCESSFULLY");
@@ -158,7 +158,7 @@ void socket_task_thread(void)
     {
         LOG_STD("[ERROR] [SOCKET] CAN'T LISTEN: %s\n", strerror(errno));
         LED_ON();
-        return ERROR;
+        exit(ERROR);
     }
     
     /*accept connection */
@@ -168,7 +168,7 @@ void socket_task_thread(void)
     {
         LOG_STD("[ERROR] [SOCKET] CAN'T ACCEPT CONNECTION: %s\n", strerror(errno));
         LED_ON();
-        return ERROR;
+        exit(ERROR);
     }
     LOG_STD("[INFO] [SOCKET] ACCEPTED CONNECTION\n");
     LOG_TO_QUEUE(logData,LOG_INFO, SOCKET_TASK_ID,"ACCEPTED CONNECTION");
@@ -179,7 +179,7 @@ void socket_task_thread(void)
     {
         LOG_STD("[ERROR] [SOCKET] INVALID DATA: %s\n", strerror(errno));
         LED_ON();
-        return ERROR;
+        exit(ERROR);
     }
 
     while((read_b = read(accepted_soc, read_buff+i, 100)) < len)
