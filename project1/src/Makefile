@@ -3,7 +3,7 @@ include sources.mk
 CC:=gcc
 CFLAGS:= 
 LDFLAGS:= -lpthread -lrt -lm -lmraa
-INCLUDES:= -I ../include/common -I ../include/bbg #-I ../include/cmocka    
+INCLUDES:= -I ../include/common -I ../include/bbg     
 
 OUTPUT_FILE_EXT:=.out
 OUTPUT_FILE:= project1$(OUTPUT_FILE_EXT)
@@ -12,15 +12,13 @@ OUTPUT_FILE:= project1$(OUTPUT_FILE_EXT)
 TEST_SRC= light_task.c \
 temp_task.c \
 unittest_light.c \
-unittest_temp.c \
-unittest_main.c \
 my_time.c \
 i2c_wrapper.c \
 led_task.c \
 logger_task.c \
 socket_task.c 
 
-TEST_MAIN_OUT= test_main.out
+TEST_MAIN_OUT= test_light.out
 
 .PHONY:build
 build:

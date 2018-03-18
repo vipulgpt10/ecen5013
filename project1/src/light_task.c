@@ -292,7 +292,7 @@ int light_task_init(void)
 
   LOG_STD("[INFO] [LIGHT] INITIALIZED SHARED MEMORY\n");
 
-  read_sensor_lux(&prev_lux)
+  read_sensor_lux(&prev_lux);
 
   return SUCCESS;
 }
@@ -321,6 +321,10 @@ void light_timer_handler(int signal)
   	LOG_STD("[INFO] [LIGHT_HANDLER] SUDDEN CHANGE IN LUMINOSITY!\n");
   	LOG_TO_QUEUE(logData,LOG_INFO,LIGHT_TASK_ID,"SUDDEN CHANGE IN LUMINOSITY!");
   }
+  else
+	{
+		LED_OFF();
+	}
   prev_lux = lux;
 
 }

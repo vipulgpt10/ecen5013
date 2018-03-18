@@ -10,6 +10,7 @@
 //***********************************************************************************
 // Include files
 //**********************************************************************************
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -18,6 +19,11 @@
 #include "main_task.h"
 #include "logger_task.h"
 #include "light_task.h"
+#include "socket_task.h"
+#include "led_task.h"
+#include "temp_task.h"
+
+
 
 //***********************************************************************************
 //Function Definitions

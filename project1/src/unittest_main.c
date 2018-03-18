@@ -56,15 +56,15 @@ extern void test_temp_regCheck(void **state);
 int main(int argc, char **argv)
 {
   const struct CMUnitTest tests[] = {
-    cmocka_unit_test(test_light_regCheck),
+    cmocka_unit_test(test_light_regCheck)
     cmocka_unit_test(test_temp_regCheck)
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);
 }
 
-void signal_handler(int signal)
-{
 
-}
+
+
+
 
