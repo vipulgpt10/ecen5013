@@ -110,7 +110,7 @@ void vApplicationStackOverflowHook(xTaskHandle *pxTask, char *pcTaskName)
  * This function sends LOG_STRING notification to Task3.
  *
  ***********************************************************************/
-#if 1
+#if 0
 static void HeartBeatTimer_Callback(TimerHandle_t xTimer)
 {
     logTask_Msg_t   logHeartBeat_Data={0};
@@ -118,25 +118,28 @@ static void HeartBeatTimer_Callback(TimerHandle_t xTimer)
     BaseType_t NotifyWait_Return;
 
     //Wait on notifications TOGGLE_LED and LOG_STRING
-    NotifyWait_Return = xTaskNotifyWait(0, ULONG_MAX, &u32Events, pdMS_TO_TICKS(1000)); //timeout 10,000ms=10s
+    NotifyWait_Return = xTaskNotifyWait(0, ULONG_MAX, &u32Events, portMAX_DELAY); //timeout 10,000ms=10s
     //Check for TOGGLE_LED event
-    if( !(u32Events&LOGGER_TASK_HEARTBEAT) )
+    if( !(u32Events&LOGGER_TASK_STATUS) )
     {
-      LOG_STD("[LOGGER] HEARTBEAT MISSED");
-      logHeartBeat_Data.task_status[0] = MISSED_HEARTBEAT;
+      LOG_STD("[HEARTBEAT] LOGGER_TASK: DEAD\n");
+      logHeartBeat_Data.task_status[LOGGER_TASK_ID] = DEAD;
     }
-    //else
+    else
     {
-        logHeartBeat_Data.task_status[0] = RECEIVED_HEARTBEAT;
+        LOG_STD("[HEARTBEAT] LOGGER_TASK: ALIVE\n");
+        logHeartBeat_Data.task_status[LOGGER_TASK_ID] = ALIVE;
     }
-
-    LOG_TO_QUEUE(logHeartBeat_Data, LOG_STATUS, HEARTBEAT_TASK_ID, DEFAULT_STEP_COUNT, DEFAULT_PULSERATE, LOGGER_TASK_INITIALIZED);
 
 }
 #endif
 void heart_beat_task(void * pvParameters)
 {
     TimerHandle_t xHeartBeatTimerHandle;
+    logTask_Msg_t logData={0};
+
+    LOG_TO_QUEUE(logData, LOG_STATUS, HEARTBEAT_TASK_ID, DEFAULT_STEP_COUNT, DEFAULT_PULSERATE, HEARTBEAT_TASK_INITIALIZED);
+
 #if 0
     //create a timer which runs continuously with frequency 2Hz
     xHeartBeatTimerHandle= xTimerCreate("heartbeat_timer", \
@@ -165,6 +168,7 @@ void logger_task(void * pvParameters)
 {
     logTask_Msg_t logMesg_recv={0}, logMesg_uart_recv={0};
     uint8_t index;
+    char readData[6] = "DEAD";
 
 
     LOG_STD("[INFO] LOGGER TASK INITIALIZED\n");
@@ -177,7 +181,10 @@ void logger_task(void * pvParameters)
         {
 
             #ifdef TCP_COMMUNICATION
+                char readData[6] = "DEAD";
                 TCP_Send((void *)&logMesg_recv, sizeof(logMesg_recv));
+                TCP_Receive((void *)readData, 6);
+                LOG_STD("[INFO] [LOGGER_TASK] SERVER STATUS: %s\n",readData );
             #endif
 
             #ifdef  UART_COMMUNICATION
@@ -211,14 +218,14 @@ void pulserate_task(void * pvParameters)
 
     if(test_pulserate())
     {
-        LOG_STD("[INFO] [PULSERATE] Startup Test: Passed!\n\r");
+        LOG_STD("[INFO] [PULSERATE] STATUS: ALIVE \n\r");
     }
     else
     {
-        LOG_STD("[DATA] [PULSERATE] Startup Test: Failed!===\n\r");
+        LOG_STD("[DATA] [PULSERATE] STATUS: DEAD \n\r");
     }
 
-
+    LOG_TO_QUEUE(logData, LOG_INFO, PULSERATE_TASK_ID, DEFAULT_STEP_COUNT, DEFAULT_PULSERATE, PULSERATE_TASK_INITIALIZED);
     while(1)
     {
         irValue = getIR();
@@ -244,11 +251,7 @@ void pulserate_task(void * pvParameters)
 
                 beatAvg /= 4;
             }
-
-            //LOG_STD("[DATA] [PULSERATE] Avg BPM = %d\n\r", beatAvg);
-            LOG_STD("Heart rate\n");
             LOG_TO_QUEUE(logData, LOG_DATA, PULSERATE_TASK_ID, DEFAULT_STEP_COUNT, beatAvg, AVERAGE_BEATS_PER_MINUTE);
-
         }
     }
     /* Task should be deleted and should not return */
@@ -266,21 +269,19 @@ void pedometer_task(void * pvParameters)
 
     if(test_pedometer())
     {
-        LOG_STD("[INFO] [PEDOMETER] Startup Test: Passed!\n\r");
+        LOG_STD("[INFO] [PEDOMETER] STATUS: ALIVE \n\r");
     }
     else
     {
-        LOG_STD("[ERROR] [PEDOMETER] Startup Test: Failed!===\n\r");
+        LOG_STD("[ERROR] [PEDOMETER] STATUS: DEAD \n\r");
     }
 
-
+    LOG_TO_QUEUE(logData, LOG_INFO, PEDOMETER_TASK_ID, DEFAULT_STEP_COUNT, DEFAULT_PULSERATE, PEDOMETER_TASK_INITIALIZED);
     while(1)
     {
 
         count = read_stepCounter();
-//        LOG_STD("[DATA] [PEDOMETER] Step Count = %d\t", count);
         LOG_TO_QUEUE(logData, LOG_DATA, PEDOMETER_TASK_ID, count, DEFAULT_STEP_COUNT, NUMBER_OF_STEPS);
-        LOG_STD("Pedometer\n");
 
         temp = read_temperature();
         LOG_STD(" Temperature = %d\n\r", temp);

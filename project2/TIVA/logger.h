@@ -30,8 +30,11 @@
 /* logger file name */
 #define LOGFILE_NAME      "/my_log.txt"
 
-#define LOG_STRING        0x02
-#define LOGGER_TASK_HEARTBEAT      0x1
+#define LOG_STRING                 0x02
+#define LOGGER_TASK_STATUS         0x1
+#define PEDOMETER_TASK_STATUS      0x2
+#define PULSERATE_TASK_STATUS      0x4
+
 /* Log level  type*/
 typedef enum
 {
@@ -41,12 +44,6 @@ typedef enum
   LOG_DATA,
   LOG_ALL
 }Log_MessageType_t;
-
-//#define LOG_ERR   0
-//#define LOG_STATUS   1
-//#define LOG_INFO   2
-//#define LOG_DATA   3
-//#define LOG_ALL   4
 
 /* Log level  type*/
 typedef enum
@@ -60,15 +57,6 @@ typedef enum
   NUMBER_OF_STEPS,
   MESSAGE_MAX
 }Log_Message_t;
-
-//#define LOGGER_TASK_INITIALIZED   0
-//#define HEARTBEAT_TASK_INITIALIZED   1
-//#define PEDOMETER_TASK_INITIALIZED   2
-//#define PULSERATE_TASK_INITIALIZED   3
-//#define LOGGER_QUEUE_INITIALIZED   4
-//#define AVERAGE_BEATS_PER_MINUTE    (5)
-//#define NUMBER_OF_STEPS   6
-//#define MESSAGE_MAX   7
 
 /* logger message structure*/
 typedef struct

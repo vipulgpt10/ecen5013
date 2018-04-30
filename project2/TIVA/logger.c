@@ -49,16 +49,12 @@ void write_message_LogQueue( QueueHandle_t queue, const logTask_Msg_t *logstruct
   {
       LOG_STD("[LOG_STRING] Message queue Error\n");
   }
-
 }
-
+#if 0
 static void loggerTimer_Callback(TimerHandle_t xTimer)
 {
-    logTask_Msg_t   logHeartBeat_Data;
-    uint32_t    u32Events;
-
     //Notify Task3 with LOG_STRING event & check the return value
-    if( pdTRUE==xTaskNotify(task_handle[1], LOGGER_TASK_HEARTBEAT, eSetBits))
+    if( pdTRUE==xTaskNotify(task_handle[1], LOGGER_TASK_STATUS, eSetBits))
     {
         UARTprintf("[LOGGER] Task Notify Success\n");
     }
@@ -68,6 +64,7 @@ static void loggerTimer_Callback(TimerHandle_t xTimer)
     }
 
 }
+#endif
 
 /******************************************************************//**********
  * @brief logger_task_init()
@@ -94,7 +91,7 @@ void logger_init(void)
 
 #if 0
   //create a timer which runs continuously with frequency 2Hz
-  xLoggerTimerHandle= xTimerCreate("Task1_timer", \
+  xLoggerTimerHandle= xTimerCreate("Logger_timer", \
                                   mainLOGGERTASK_TIMER_PERIOD, \
                                   pdTRUE, \
                                   0, \
@@ -112,13 +109,3 @@ void logger_init(void)
   xTimerStart(xLoggerTimerHandle,0);
 #endif
 }
-
-/*void standard_display(logTask_Msg_t *logMessage)
-{
-    LOG_STD("[%s] [%s] [STEP_COUNT: %d] [PULSERATE: %d] [MESSAGE: %s] \n", \
-            logmessageType_nameString[logMessage->message_type], \
-            taskId_nameString[logMessage->task_ID], \
-            logMessage->pedometer_data, logMessage->pulserate_data, \
-            logmessageType_nameString[logMessage->pulserate_data] \
-            logmessageType_nameString[logMessage->message] );
-}*/

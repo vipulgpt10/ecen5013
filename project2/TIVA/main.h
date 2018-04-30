@@ -87,21 +87,14 @@ typedef enum
   MAIN_TASK_ID
 }Task_Id_t;
 
-//#define LOGGER_TASK_ID   0
-//#define HEARTBEAT_TASK_ID   1
-//#define PEDOMETER_TASK_ID   2
-//#define PULSERATE_TASK_ID   3
-//#define MAIN_TASK_ID   4
 
 /* task status type*/
 typedef enum
 {
-    MISSED_HEARTBEAT=0,
-    RECEIVED_HEARTBEAT
+    DEAD=0,
+    ALIVE
 }Task_Status_t;
 
-//#define MISSED_HEARTBEAT  0
-//#define MISSED_HEARTBEAT  1
 //***********************************************************************************
 // Global Variables
 //***********************************************************************************
