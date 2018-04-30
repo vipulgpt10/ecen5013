@@ -1,0 +1,602 @@
+/**
+* @file main_task.h
+* @brief This file contains main task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __MAIN_TASK_H__
+#define __MAIN_TASK_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+//***********************************************************************************
+// Defined Macros and Types
+//***********************************************************************************/
+#define TCP 			(1)
+#define UART 			(2)
+
+
+#define COMM 			(TCP)		// Change this for required communication
+
+#if (COMM == TCP)
+#define USE_TCP				(1)
+#define USE_UART 			(0)
+#else
+#define USE_TCP				(0)
+#define USE_UART 			(1)
+#endif			
+
+/* Macro to denote the number of threads */
+#define NUM_THREADS     1
+
+/* status macros */
+#define SUCCESS        0
+#define ERROR         -1
+
+/* task ID type */
+typedef enum
+{
+  LOGGER_TASK_ID,
+  UART_TASK_ID,
+  MAIN_TASK_ID
+}Task_Id_t;
+
+/* task status type*/
+typedef enum
+{
+  DEAD=0,
+  ALIVE
+}Task_Status_t;
+
+//***********************************************************************************
+// Global Variables
+//***********************************************************************************
+
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief main()
+ * This function creates creates multiple threads such as logger_task, 
+ * temperature_task, light_task, socket_task & status read and 
+ * waits for its completion
+ *****************************************************************************/
+int main( int argc, char** argv );
+
+
+#endif /* __MAIN_TASK_H__ */
+/**
+ * @file main_task.c
+ * @brief This file contains main task which creates multiple threads such as
+ * logger_task, temperature_task, light_task, socket_task & status read.
+ 
+ * @author Kovuru Nagarjuna Reddy
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <pthread.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/time.h>
+#include <signal.h>
+#include "main_task.h"
+#include "logger_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* array of task status strings */
+const char* task_statusString[]={"DEAD", "ALIVE"};
+/* array of function name strings*/
+const char *threadfun_name[]= { "logger_task_thread"};
+/* array of task id strings*/
+const char* taskId_nameString[MAIN_TASK_ID]= { "LOGGER_TASK_ID" };
+/* barrier variable to synchronize all running tasks */
+pthread_barrier_t tasks_barrier;
+
+/******* Function Prototypes **************/
+extern void logger_task_thread();
+
+/* array of function pointers*/
+static void (*thread_fun[NUM_THREADS]) = { logger_task_thread };
+
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief main()
+ * This function creates creates multiple threads such as logger_task, 
+ * temperature_task, light_task, socket_task & status read and 
+ * waits for its completion
+ *****************************************************************************/
+int main( int argc, char** argv )
+{
+  pthread_t threads[NUM_THREADS];
+  int ret;
+  int index;
+
+  /* create barrier for all threads and main */
+  pthread_barrier_init( &tasks_barrier, NULL, NUM_THREADS+1);
+    
+  LOG_STD("[INFO] UART INITIALIZED\n");
+
+  sleep(1);
+
+  /**** Thread Creation *******/
+  printf("[INFO] CREATING THREADS \n");
+  /* run loop required thread number of times */
+  for (index = 0; index< NUM_THREADS; index++) 
+  {
+    ret=pthread_create(&threads[index], NULL, thread_fun[index], NULL);
+    if(ret==0)
+    {
+      printf("[INFO] THREAD %s CREATED \n", threadfun_name[index]);
+    }
+    else
+    {
+      printf("[ERROR] THREAD %s NOT CREATED: %s\n", threadfun_name[index], strerror(errno));
+    }
+  }
+
+  pthread_barrier_wait(&tasks_barrier);
+  
+    /************** Signal Handler Linking to SIGUSR1 & SIGUSR2 *******/
+
+  /***** Waiting for threads to complete ******/
+  printf("[INFO] WAITING FOR THREADS COMPLETION \n");
+  /* run loop required thread number of times */
+  for (index = 0; index< NUM_THREADS; index++) 
+  {
+    ret=pthread_join(threads[index], NULL);
+    if(ret==0)
+    {
+      printf("[INFO] THREAD %s COMPLETED\n", threadfun_name[index]);
+    }
+    else
+    {
+      printf("[ERROR] THREAD %s NOT COMPLETED: %s\n", threadfun_name[index], strerror(errno));
+    }
+  }
+
+    exit(EXIT_SUCCESS);
+}
+/**
+* @file logger_task.h
+* @brief This file contains logger task functionalities
+*
+* This header file provides an abstraction of Macros, variables and
+* profiling via function calls.
+*
+* @author Kovuru Nagarjuna Reddy
+* @date March 14 2018
+*
+*/
+#ifndef __LOGGER_H__
+#define __LOGGER_H__
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <errno.h>
+#include <mqueue.h>
+#include <sys/mman.h>
+#include "main_task.h"
+
+#if USE_TCP
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
+#endif
+
+//***********************************************************************************
+// Defined Macros and Structure Types
+//***********************************************************************************
+/* message size */
+#define LT_MSG_SIZE       32
+/* logger message queue name */
+#define LOGTASK_MQ_NAME   "/logTask_mq"
+/* logger file name */
+#define LOGFILE_NAME      "/my_log.txt"
+
+#define PORT_ADR    2000
+
+
+/* Log level  type*/
+typedef enum
+{
+  LOG_ERR,
+  LOG_STATUS,
+  LOG_INFO,
+  LOG_DATA,
+  LOG_ALL
+}Log_MessageType_t;
+
+
+/* Log level  type*/
+typedef enum
+{
+  LOGGER_TASK_INITIALIZED,
+  UART_TASK_INITIALIZED,
+  PEDOMETER_TASK_INITIALIZED,
+  PULSERATE_TASK_INITIALIZED,
+  LOGGER_QUEUE_INITIALIZED,
+  MESSAGE_MAX
+}Log_Message_t;
+
+ #define NUM_TASKS      3
+/* logger message structure*/
+typedef struct
+{
+   uint8_t    message_type;
+   uint8_t    task_ID;
+   uint8_t    pedometer_data;
+   uint8_t    pulserate_data;
+   uint8_t    log_message;
+   uint8_t    task_status[4];
+}logTask_Msg_t;
+
+
+
+/******************************************************************//**********
+ * @brief enters message queue data into log file.
+ *****************************************************************************/
+
+#define   LOG_TO_FILE(mq_data)  \
+          char buf[200]; \
+          log_fp=fopen("my_log.txt", "a"); \
+          snprintf( buf, sizeof(buf), "[%s]" "[%s]" "[STEP COUNT: %d]" "[PULSERATE COUNT: %d]" "[%s]\n", \
+             TIVA_messageType_nameString[mq_data.message_type], TIVA_taskId_nameString[mq_data.task_ID], \
+             mq_data.pedometer_data, mq_data.pulserate_data, TIVAMessage_nameString[mq_data.log_message] ); \
+          fprintf(log_fp, buf); \
+          fclose(log_fp);          
+
+/******************************************************************//**********
+ * @brief prints messages to standard output(screen).
+ *****************************************************************************/
+#define   LOG_STD(format, ...)    printf(format, ##__VA_ARGS__)
+
+//***********************************************************************************
+// Global Variables 
+//***********************************************************************************
+extern const char* taskId_nameString[MAIN_TASK_ID];
+
+//***********************************************************************************
+// Function Prototypes
+//***********************************************************************************
+
+void write_message_LogQueue(mqd_t queue, const logTask_Msg_t *logstruct, \
+                                                                 size_t log_struct_size);
+
+#endif /* __LOGGER_H__ */
+/**
+ * @file logger_task.c
+ * @brief This file contains logger task functionality.
+ *
+ * @author Kovuru Nagarjuna Reddy
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <pthread.h>
+#include <fcntl.h>
+#include <errno.h>
+#include "main_task.h"
+#include "logger_task.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+/* logger task message queue descriptor */
+mqd_t logTask_mq_d;
+/* logger file pointer */
+FILE* log_fp;
+/* logger shared memory*/
+void *logTask_sh_mem;
+int logTask_sm_fd;
+/* logger task kill flag*/
+int logTask_kill;
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
+/* loglevel string names array*/
+const char* TIVA_messageType_nameString[5]= {"ERROR","STATUS","INFO","DATA","LOG_ALL"};
+/* array of task id strings*/
+const char* TIVAMessage_nameString[8]= { "LOGGER_TASK_INITIALIZED", "HEARTBEAT_TASK_INITIALIZED","PEDOMETER_TASK_INITIALIZED", "PULSERATE_TASK_INITIALIZED", "LOGGER_QUEUE_CREATED", "AVERAGE_BEATS_PER_MINUTE", "NUMBER_OF_STEPS", "MESSAGE_MAX" };
+const char* TIVA_taskId_nameString[5]= { "LOGGER_TASK_ID","HEARTBEAT_TASK_ID", \
+ "PEDOMETER_TASK_ID","PULSERATE_TASK_ID", "MAIN_TASK_ID"};
+/***** Mutex Locks ****/
+pthread_mutex_t logQueue_mutex= PTHREAD_MUTEX_INITIALIZER;
+extern int fd;
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+/******************************************************************//**********
+ * @brief logger_task_init()
+ * This function creates below,
+ * Message Queue: To log messages from all the running tasks.
+ * Shared Memory: To share logger task's status(DEAD/ALIVE) with main_task.
+ * LogFile      : To store messages received from its message queue.
+ *****************************************************************************/
+int logger_task_init(void) 
+{
+  /********* Create Log File *************/
+  log_fp= fopen("my_log.txt", "w");
+  fclose(log_fp);
+
+  return logTask_mq_d;
+}
+
+
+/******************************************************************//**********
+ * @brief logger_task_thread()
+ * This thread initializes the logger task resources and process data in 
+ * logger queue.
+ *****************************************************************************/
+void logger_task_thread(void) 
+{
+    logTask_Msg_t logData={0};
+    int ret;
+
+    LOG_STD("[INFO] LOGGER TASK STARTED\n");
+    ret= logger_task_init();
+    if(ERROR == ret)
+    {
+        LOG_STD("[ERROR] LOGGER TASK INIT: %s\n", strerror(errno));
+        exit(ERROR);
+    }
+
+    LOG_STD("[INFO] [LOGGER] WAITING AT BARRIER\n");
+    /* wait logger task so that other tasks are synchronized with it*/
+    pthread_barrier_wait(&tasks_barrier);
+    LOG_STD("[INFO] [LOGGER] CROSSED BARRIER\n");
+ 
+    printf("size: %d\n", sizeof(logData));
+
+    #if USE_UART
+    uart_init();
+    #endif
+
+    #if USE_TCP
+    struct sockaddr_in addr, peer_addr;
+    int addr_len = sizeof(peer_addr);
+    char rdbuff[1024] = {0};
+    int server_socket, accepted_soc, opt = 1;
+    int i = 0;
+    int read_b;
+    size_t pload_len = 0;
+
+    /* create socket */
+    if((server_socket = socket(AF_INET,SOCK_STREAM,0)) == 0)
+    {
+        printf("[Server] [ERROR] Socket Creation Error\n");
+        return 1;
+    }
+    else
+        printf("[Server] Socket Created Successfully\n");
+
+    /* set socket options */
+    if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &(opt), sizeof(opt)))
+    {
+        printf("[Server] [ERROR] Socket options set error\n");
+        return 1;
+    }
+
+    /*Set the sockaddr_in structure */
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;  
+    addr.sin_port = htons(PORT_ADR);
+
+    /*bind socket to a address */
+    if((bind(server_socket,(struct sockaddr*)&addr, sizeof(addr))) < 0)
+    {
+        printf("[Server] [ERROR] Bind socket Error\n");
+        return 1;
+    }
+    else
+        printf("[Server] Socket binded Successfully\n");
+
+    /* listen for connections*/
+    if(listen(server_socket,5) < 0)
+    {
+        printf("[Server] [ERROR] Can't listen connection\n");
+        return 1;
+    } 
+
+    printf("[Server] Listening\n");
+
+    /*accept connection */
+    accepted_soc = accept(server_socket, (struct sockaddr*)&peer_addr,(socklen_t*)&addr_len);
+    if(accepted_soc < 0)
+    {
+        printf("[Server] [ERROR] Can't accept connection\n");
+        return 1;
+    }
+
+    printf("[Server] Accepted!\n");
+
+    #endif   /* __USE_TCP__
+ 
+    /* start logger queue processing */
+  	while(1)
+    {
+		
+        #if USE_UART
+        read_packet(fd, &logData, sizeof(logData) );
+        LOG_STD("Packet Received\n");
+        #endif
+
+        #if USE_TCP
+        read(accepted_soc, &logData, sizeof(logData));
+        LOG_STD("Packet Received\n");
+        send(accepted_soc , "ALIVE" , 6, 0);
+        #endif
+
+		LOG_TO_FILE(logData);
+    }
+
+    /*********** KILL Signal Received ***********/
+    LOG_STD("[INFO] LOGGER TASK KILL SIGNAL RECEIVED\n");
+    /* flush logfile */
+    fflush(log_fp);
+    /* close message queue*/
+    ret=mq_close(LOGTASK_MQ_NAME);
+    if(ERROR == ret)
+    {
+        LOG_STD("[ERROR] LOGGER MESSAGE QUEUE CLOSE FAILED:%s\n", strerror(errno));
+    }
+    LOG_STD("[INFO] LOGGER MESSAGE QUEUE CLOSED\n");
+
+    ret=mq_unlink(LOGTASK_MQ_NAME);
+    if(ERROR == ret)
+    {
+        LOG_STD("[ERROR] LOGGER MESSAGE QUEUE UNLINK FAILED:%s\n", strerror(errno));
+    }
+    LOG_STD("[INFO] LOGGER MESSAGE QUEUE UNLINKED\n");
+
+    pthread_exit(NULL);
+}
+#ifndef UART_NEW_H
+#define UART_NEW_H 
+
+#include<stdint.h>
+#include <termios.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <time.h>
+
+
+
+typedef enum {HEARTBEAT_MISSED=0, HEARTBEAT_RECEIVED=1} heartbeat_t;
+
+#define NUMBER_OF_THREADS_TIVA      4
+
+/* options for serial port config */
+void tty_config(struct termios *con, int descriptor);
+
+/* read UART byte */
+void read_byte(int fd,char *received);
+
+/* read string */
+void read_string(int fd,char *string);
+
+/* read the structure */
+void read_struct(int descriptor, logTask_Msg_t* recvd_struct);
+
+/* initialize UART */
+void uart_init(void);
+
+#endif
+/**
+ * @file logger_task.c
+ * @brief This file contains logger task functionality.
+ *
+ * @author Kovuru Nagarjuna Reddy
+ * @date Mar 14, 2018
+ *
+ */
+
+//***********************************************************************************
+// Include files
+//***********************************************************************************
+#include <pthread.h>
+#include <fcntl.h>
+#include <errno.h>
+#include "main_task.h"
+#include "logger_task.h"
+#include "uart.h"
+
+//***********************************************************************************
+// Global variables/structures and Macros
+//***********************************************************************************
+struct termios *configure;
+void tty_config(struct termios *option, int descriptor);
+char *device = "/dev/ttyS4";
+int fd;
+
+/* task barrier to synchronize tasks*/
+extern pthread_barrier_t tasks_barrier;
+extern mqd_t logTask_mq_d;
+extern const char* logMessage_nameString[MESSAGE_MAX+1];
+extern const char* messageType_nameString[LOG_ALL+1];
+extern const char* task_statusString[];
+extern const char* taskId_nameString[MAIN_TASK_ID];
+/* logger file pointer */
+extern FILE* log_fp;
+
+//***********************************************************************************
+//Function Definitions
+//***********************************************************************************
+void configuration(struct termios *option, int descriptor)
+{
+    tcgetattr(descriptor, option);
+    option->c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+    option->c_oflag = 0;
+    option->c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+    option->c_cc[VMIN] = 1;
+    option->c_cc[VTIME] = 0;
+
+    if(cfsetispeed(option, B115200) || cfsetospeed(option, B115200))
+    {
+        perror("Baud Rate Error\n");
+    }
+
+    if(tcsetattr(descriptor, TCSAFLUSH, option) < 0)
+    {
+        perror("Attribute Error\n");
+    }
+}
+
+void uart_init(void)
+{
+    fd = open(device, O_RDWR | O_NOCTTY | O_SYNC);
+    if(fd==-1)
+    {
+        perror("ERROR opening file descriptor\n");
+    }
+
+    configure = (struct termios*)malloc(sizeof(struct termios));
+    if(configure==NULL){
+        printf("Malloc fail");
+    }
+    configuration(configure, fd);
+}
+
+void read_packet(int descriptor, logTask_Msg_t *readPacket, size_t size )
+{  
+	// uint8_t *byte = readPacket;
+	
+	read(descriptor, (void *)readPacket, size);     
+}
+
+
