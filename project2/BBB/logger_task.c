@@ -154,12 +154,13 @@ void logger_task_thread(void)
 		
         #if USE_UART
         read_packet(fd, &logData, sizeof(logData) );
-        LOG_STD("Here!\n");
+        LOG_STD("Packet Received\n");
         #endif
 
         #if USE_TCP
         read(accepted_soc, &logData, sizeof(logData));
-        LOG_STD("Here!\n");
+        LOG_STD("Packet Received\n");
+        send(accepted_soc , "ALIVE" , 6, 0);
         #endif
 
 		LOG_TO_FILE(logData);
